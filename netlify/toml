@@ -1,0 +1,10 @@
+# BEGIN EDIT: Netlify config
+[build]
+  functions = "netlify/functions"
+
+# Optional: make sure we serve the SPA index.html for client routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+# END EDIT
