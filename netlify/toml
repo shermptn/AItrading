@@ -1,5 +1,7 @@
-# BEGIN EDIT: netlify.toml
+[build]
+  command = ""
+  publish = "."
+
 [functions]
   directory = "netlify/functions"
-  node_bundler = "esbuild"
-# END EDIT
+  node_bundler = "esbuild"   # good defaults; works with ESM + native fetch
