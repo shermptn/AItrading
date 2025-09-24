@@ -1,6 +1,8 @@
+// BEGIN EDIT: netlify/functions/package.json
 {
-  "name": "functions",
   "type": "module",
-  "private": true,
-  "dependencies": {}
+  "dependencies": {
+    "yahoo-finance2": "^2.12.0"
+  }
 }
+// END EDIT
