@@ -1,38 +1,50 @@
-// netlify/functions/timeseries.js
+// BEGIN EDIT: Twelve Data time_series proxy (intraday + daily)
 const TD = process.env.TWELVE_DATA_KEY;
-const mapSym = (s) => (s || "").toUpperCase() === "NAS100" ? "NDX" : s;
+const mapSymbol = (s = "") =>
+  s.toUpperCase() === "NAS100" ? "NDX" : s.toUpperCase();
 
 export async function handler(event) {
   try {
-    const q = event.queryStringParameters || {};
-    const symbol = mapSym(q.symbol || "AAPL");
-    const interval = q.interval || "1min";
-    const outputsize = q.outputsize || "200";
+    const qs = event.queryStringParameters || {};
+    const symbol = mapSymbol(qs.symbol || "");
+    const interval = (qs.interval || "5min").toLowerCase(); // "1min","5min","1day"
+    const outputsize = qs.outputsize || "200"; // 30/60/200/5000
 
-    if (!TD) throw new Error("Server missing TWELVE_DATA_KEY");
+    if (!symbol) return json(400, { error: "symbol required" });
 
-    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&outputsize=${encodeURIComponent(outputsize)}&order=desc&apikey=${encodeURIComponent(TD)}`;
-    const r = await fetch(url);
-    const j = await r.json();
-
-    if (!r.ok || j.status === "error" || j.code) {
-      return { statusCode: 502, body: JSON.stringify({ error: j.message || "Twelve Data error" }) };
+    if (!TD) {
+      return json(200, {                  // demo fallback
+        symbol, interval, source: "⚠️ Local Fallback (no TWELVE_DATA_KEY)",
+        candles: [], updated: new Date().toISOString()
+      });
     }
 
-    const candles = (j.values || j.data || [])
-      .map(c => ({
-        time: c.datetime || c.time || c.date || c.timestamp,
-        open: +c.open, high: +c.high, low: +c.low, close: +c.close,
-        volume: +(c.volume || 0)
-      }))
-      .reverse();
+    // Twelve Data: https://api.twelvedata.com/time_series
+    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&outputsize=${encodeURIComponent(outputsize)}&order=ASC&apikey=${encodeURIComponent(TD)}`;
+    const r = await fetch(url);
+    if (!r.ok) return json(r.status, { error: `Twelve Data ${r.status}` });
+    const j = await r.json();
 
-    return {
-      statusCode: 200,
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ symbol, interval, candles, updated: new Date().toISOString(), source: "Twelve Data (Proxy)" })
-    };
+    if (j.status === "error" || j.code) {
+      return json(502, { error: j.message || "Twelve Data error", raw: j });
+    }
+
+    const candles = (j.values || []).map(v => ({
+      time: v.datetime,                // ISO string
+      open: +v.open, high: +v.high, low: +v.low, close: +v.close,
+      volume: v.volume ? +v.volume : null,
+    }));
+
+    return json(200, {
+      symbol, interval, candles,
+      updated: new Date().toISOString(),
+      source: "Twelve Data (Proxy)"
+    });
   } catch (e) {
-    return { statusCode: 500, body: JSON.stringify({ error: e.message }) };
+    return json(500, { error: String(e) });
   }
 }
+function json(statusCode, body){
+  return { statusCode, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }, body: JSON.stringify(body) };
+}
+// END EDIT
