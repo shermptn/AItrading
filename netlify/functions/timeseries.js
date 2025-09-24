@@ -1,7 +1,5 @@
 // netlify/functions/timeseries.js
-import fetch from "node-fetch";
 const TD = process.env.TWELVE_DATA_KEY;
-
 const mapSym = (s) => (s || "").toUpperCase() === "NAS100" ? "NDX" : s;
 
 export async function handler(event) {
@@ -9,15 +7,15 @@ export async function handler(event) {
     const q = event.queryStringParameters || {};
     const symbol = mapSym(q.symbol || "AAPL");
     const interval = q.interval || "1min";
-    const outputsize = q.outputsize || "200"; // 1–5000 on TD
+    const outputsize = q.outputsize || "200";
 
     if (!TD) throw new Error("Server missing TWELVE_DATA_KEY");
 
     const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&outputsize=${encodeURIComponent(outputsize)}&order=desc&apikey=${encodeURIComponent(TD)}`;
-
     const r = await fetch(url);
     const j = await r.json();
-    if (j.status === "error" || j.code) {
+
+    if (!r.ok || j.status === "error" || j.code) {
       return { statusCode: 502, body: JSON.stringify({ error: j.message || "Twelve Data error" }) };
     }
 
@@ -27,17 +25,13 @@ export async function handler(event) {
         open: +c.open, high: +c.high, low: +c.low, close: +c.close,
         volume: +(c.volume || 0)
       }))
-      .reverse(); // oldest->newest
+      .reverse();
 
-    const body = {
-      symbol,
-      interval,
-      candles,
-      updated: new Date().toISOString(),
-      source: "Twelve Data (Proxy)"
+    return {
+      statusCode: 200,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ symbol, interval, candles, updated: new Date().toISOString(), source: "Twelve Data (Proxy)" })
     };
-
-    return { statusCode: 200, headers: { "content-type": "application/json" }, body: JSON.stringify(body) };
   } catch (e) {
     return { statusCode: 500, body: JSON.stringify({ error: e.message }) };
   }
