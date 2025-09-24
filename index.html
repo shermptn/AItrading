@@ -1,28 +1,41 @@
-<script>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Trading Insights Dashboard</title>
-  <!-- BEGIN EDIT: app-config placeholder (read-only, no secrets) -->
+
+  <!-- Read-only app config (no secrets here) -->
   <script id="app-config" type="application/json">{
     "API_BASE": "/.netlify/functions",
     "USE_PROXY": true,
     "AUTO_RUN_ANALYSIS": true
   }</script>
-  <!-- END EDIT -->
+
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f1419 0%, #1e3a8a 50%, #0f1419 100%); color: #fff; min-height: 100vh; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f1419 0%, #1e3a8a 50%, #0f1419 100%);
+      color: #fff; min-height: 100vh;
+    }
     .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
     .header { text-align: center; margin-bottom: 24px; }
-    .header h1 { font-size: 2.4rem; background: linear-gradient(45deg, #3b82f6, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+    .header h1 {
+      font-size: 2.4rem;
+      background: linear-gradient(45deg, #3b82f6, #10b981);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
     .header p { color: #94a3b8; font-size: 1.02rem; }
     .toolbar { display:flex; gap:10px; justify-content:center; margin: 14px 0 26px; flex-wrap: wrap; }
     .btn { background:#374151; color:#fff; border:1px solid #4b5563; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:.9rem; }
     .btn:hover { background:#4b5563; }
-    .market-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 24px; }
+
+    .market-overview {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px; margin-bottom: 24px;
+    }
     .stock-card { background: rgba(30, 41, 59, 0.8); border: 1px solid #334155; border-radius: 12px; padding: 20px; backdrop-filter: blur(10px); transition:.2s ease; }
     .stock-card.clickable{ cursor:pointer; }
     .stock-card.clickable:hover{ transform: translateY(-2px); border-color:#3b82f6; }
@@ -31,20 +44,26 @@
     .stock-change { font-size: 0.9rem; }
     .stock-details { font-size: .85rem; color: #94a3b8; margin-top: 8px; }
     .positive { color: #10b981; } .negative { color: #ef4444; }
+
     .analysis-section { background: rgba(30, 41, 59, 0.8); border: 1px solid #334155; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
     .analysis-section h3 { margin-bottom: 14px; display:flex; align-items:center; gap:10px }
+
     .input-group { margin-bottom: 14px; }
     .input-group label { display: block; margin-bottom: 8px; font-weight: 500; }
-    .input-group input { width: 100%; padding: 12px; background: #1e293b; border: 1px solid #475569; border-radius: 8px; color: white; font-size: 1rem; }
+    .input-group input {
+      width: 100%; padding: 12px; background: #1e293b; border: 1px solid #475569; border-radius: 8px; color: white; font-size: 1rem;
+    }
     .input-row { display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center; }
     .quick-symbols { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
     .symbol-btn { background: #374151; color: white; border: 1px solid #4b5563; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
     .symbol-btn:hover { background: #4b5563; transform: translateY(-1px); }
+
     .prompt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 24px; }
     .prompt-card { background: rgba(30, 41, 59, 0.8); border: 1px solid #334155; border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.25s ease; }
     .prompt-card:hover { transform: translateY(-4px); border-color: #3b82f6; box-shadow: 0 10px 25px rgba(59, 130, 246, 0.18); }
     .prompt-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 15px; font-size: 1.2rem; }
     .blue { background-color: #3b82f6; } .green { background-color: #10b981; } .orange { background-color: #f59e0b; } .purple { background-color: #8b5cf6; } .red { background-color: #ef4444; } .indigo { background-color: #6366f1; } .teal { background-color: #14b8a6; } .yellow { background-color: #eab308; }
+
     .analysis-result { background: rgba(15, 23, 42, 0.9); border: 1px solid #475569; border-radius: 8px; padding: 20px; margin-top: 10px; white-space: pre-wrap; line-height: 1.6; }
     .loading { display: flex; align-items: center; gap: 10px; color: #94a3b8; }
     .spinner { width: 20px; height: 20px; border: 2px solid #334155; border-top: 2px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
@@ -58,8 +77,16 @@
     .kv label { font-size:.9rem; color:#cbd5e1 }
     .switch { display:flex; gap:8px; align-items:center }
     .switch input { transform: scale(1.1); }
-    @media (max-width: 768px) { .container{padding:15px} .header h1{font-size:2rem} .prompt-grid{grid-template-columns:1fr} .market-overview{grid-template-columns:1fr} }
-    .tradingview-widget-copyright{display:none !important}
+
+    /* You asked to hide TradingView credits */
+    .tradingview-widget-copyright { display:none !important; }
+
+    @media (max-width: 768px) {
+      .container{padding:15px}
+      .header h1{font-size:2rem}
+      .prompt-grid{grid-template-columns:1fr}
+      .market-overview{grid-template-columns:1fr}
+    }
   </style>
 </head>
 <body>
@@ -75,12 +102,12 @@
       <button class="btn" id="toggleSettingsBtn">⚙️ Settings</button>
     </div>
 
-    <!-- Live Ticker Tape (single instance) -->
+    <!-- Live Ticker (top, single row) -->
     <div id="tvTickerWrap" class="analysis-section" style="padding:10px 14px; margin-top:-8px">
       <div id="tvTicker" class="tradingview-widget-container" style="height:44px"></div>
     </div>
 
-    <!-- Market Overview -->
+    <!-- Market Overview cards -->
     <div class="market-overview" id="marketOverview"></div>
 
     <!-- Settings -->
@@ -105,7 +132,7 @@
       <pre id="settingsLog" class="analysis-result" style="max-height:160px; overflow:auto"></pre>
     </div>
 
-    <!-- Asset Input Section -->
+    <!-- Asset Input -->
     <div class="analysis-section">
       <h3>
         <span style="background:#3b82f6;width:20px;height:20px;border-radius:4px;display:inline-block"></span>
@@ -119,7 +146,6 @@
         </div>
         <div class="quick-symbols" id="quickSymbols">
           <span style="color:#94a3b8;font-size:.9rem;margin-right:10px">Quick select:</span>
-          <!-- Magnificent 7 -->
           <button class="symbol-btn" data-sym="AAPL">AAPL</button>
           <button class="symbol-btn" data-sym="MSFT">MSFT</button>
           <button class="symbol-btn" data-sym="GOOGL">GOOGL</button>
@@ -127,7 +153,6 @@
           <button class="symbol-btn" data-sym="META">META</button>
           <button class="symbol-btn" data-sym="NVDA">NVDA</button>
           <button class="symbol-btn" data-sym="TSLA">TSLA</button>
-          <!-- Extras -->
           <button class="symbol-btn" data-sym="NFLX">NFLX</button>
           <button class="symbol-btn" data-sym="QQQ">QQQ</button>
           <button class="symbol-btn" data-sym="SPY">SPY</button>
@@ -136,7 +161,7 @@
       </div>
     </div>
 
-    <!-- Analysis Prompts -->
+    <!-- Prompt Cards -->
     <div class="prompt-grid">
       <div class="prompt-card" data-analysis="market-conditions"><div class="prompt-icon blue">📈</div><h3>Market Conditions Analysis</h3><p>Get data-driven insights on current market conditions</p></div>
       <div class="prompt-card" data-analysis="position-logic"><div class="prompt-icon green">🧠</div><h3>Position Logic Check</h3><p>Remove bias with objective position analysis</p></div>
@@ -150,99 +175,38 @@
 
     <!-- Analysis Results -->
     <div class="analysis-section" id="resultsSection" style="display:none;">
-      <h3>
-        <span style="background:#3b82f6;width:20px;height:20px;border-radius:4px;display:inline-block"></span>
-        AI Analysis Results
-      </h3>
+      <h3><span style="background:#3b82f6;width:20px;height:20px;border-radius:4px;display:inline-block"></span> AI Analysis Results</h3>
       <div id="analysisResult" class="analysis-result"></div>
     </div>
-    <!-- BEGIN EDIT: Options panel -->
-    <div class="analysis-section" id="optionsSection">
-      <h3><span style="background:#3b82f6;width:20px;height:20px;border-radius:4px;display:inline-block"></span> Options Contracts</h3>
 
-      <div class="kv" style="gap:12px; flex-wrap:wrap">
-        <label>Symbol</label>
-        <input id="optSymbolInput" style="width:120px;padding:8px;background:#1e293b;border:1px solid #475569;border-radius:8px;color:#fff" placeholder="AAPL" />
-        <button class="btn" id="optSyncSymbolBtn">Use Current</button>
-
-        <label>Expiration</label>
-        <select id="optExpSelect" style="padding:8px;background:#1e293b;border:1px solid #475569;border-radius:8px;color:#fff;min-width:170px"></select>
-
-        <label>Type</label>
-        <select id="optTypeSelect" style="padding:8px;background:#1e293b;border:1px solid #475569;border-radius:8px;color:#fff">
-          <option value="all">All</option>
-          <option value="call">Calls</option>
-          <option value="put">Puts</option>
-        </select>
-
-        <label>Strike Filter (±%)</label>
-        <input id="optMoneynessInput" type="number" value="15" style="width:80px;padding:8px;background:#1e293b;border:1px solid #475569;border-radius:8px;color:#fff" />
-
-        <button class="btn" id="optLoadBtn">Load Chain</button>
-      </div>
-
-      <div id="optMeta" class="note" style="margin:10px 0 6px"></div>
-
-      <div id="optTableWrap" style="overflow:auto; max-height:320px; border:1px solid #334155;border-radius:8px">
-        <table id="optTable" style="width:100%; border-collapse:collapse; font-size:.9rem">
-          <thead style="position:sticky;top:0;background:#0f172a">
-            <tr>
-              <th style="text-align:left;padding:10px;border-bottom:1px solid #334155">Strike</th>
-              <th style="text-align:left;padding:10px;border-bottom:1px solid #334155">Type</th>
-              <th style="text-align:right;padding:10px;border-bottom:1px solid #334155">Bid</th>
-              <th style="text-align:right;padding:10px;border-bottom:1px solid #334155">Ask</th>
-              <th style="text-align:right;padding:10px;border-bottom:1px solid #334155">Last</th>
-              <th style="text-align:right;padding:10px;border-bottom:1px solid #334155">IV</th>
-              <th style="text-align:right;padding:10px;border-bottom:1px solid #334155">Delta</th>
-              <th style="text-align:right;padding:10px;border-bottom:1px solid #334155">Gamma</th>
-              <th style="text-align:right;padding:10px;border-bottom:1px solid #334155">Theta</th>
-              <th style="text-align:right;padding:10px;border-bottom:1px solid #334155">Vega</th>
-              <th style="text-align:right;padding:10px;border-bottom:1px solid #334155">Vol</th>
-              <th style="text-align:right;padding:10px;border-bottom:1px solid #334155">OI</th>
-              <th style="text-align:center;padding:10px;border-bottom:1px solid #334155">Add</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-
-      <div class="analysis-section" style="margin-top:16px">
-        <h3><span style="background:#3b82f6;width:20px;height:20px;border-radius:4px;display:inline-block"></span> Strategy Builder</h3>
-        <div id="legsList" class="note" style="margin-bottom:8px">No legs added. Click “＋” in the chain to add.</div>
-        <div class="kv" style="gap:12px;flex-wrap:wrap;margin-bottom:10px">
-          <button class="btn" id="optClearLegsBtn">Clear</button>
-          <button class="btn" id="optPresetVerticalBtn">Preset: Vertical (Debit)</button>
-        </div>
-        <div id="optPayoffMeta" class="note" style="margin-bottom:8px"></div>
-        <div id="optPayoffChart" style="height:220px;background:#0b1220;border:1px solid #334155;border-radius:8px"></div>
-      </div>
-    </div>    <!-- END EDIT: Options panel -->
-
-    <!-- BEGIN EDIT: TradingView Widgets Section -->
+    <!-- TradingView Widgets (arranged, not all in one place) -->
     <div class="analysis-section" id="tvWidgetsSection">
-      <h3><span style="background:#3b82f6;width:20px;height:20px;border-radius:4px;display:inline-block"></span> Live Markets</h3>
+      <h3><span style="background:#3b82f6;width:20px;height:20px;border-radius:8px;display:inline-block"></span> Live Markets</h3>
 
+      <!-- Main chart -->
       <div id="tvAdvancedWrap" style="height:520px; border:1px solid #334155; border-radius:8px; margin-bottom:16px; overflow:hidden">
         <div class="tradingview-widget-container" id="tvAdvanced"></div>
       </div>
 
+      <!-- Overview + News + Events -->
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:16px">
         <div class="tradingview-widget-container" id="tvOverview" style="min-height:380px; border:1px solid #334155; border-radius:8px; overflow:hidden"></div>
         <div class="tradingview-widget-container" id="tvTimeline" style="min-height:380px; border:1px solid #334155; border-radius:8px; overflow:hidden"></div>
         <div class="tradingview-widget-container" id="tvEvents" style="min-height:380px; border:1px solid #334155; border-radius:8px; overflow:hidden"></div>
       </div>
 
+      <!-- Screener + Heatmap -->
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:16px; margin-top:16px">
         <div class="tradingview-widget-container" id="tvScreener" style="min-height:550px; border:1px solid #334155; border-radius:8px; overflow:hidden"></div>
         <div class="tradingview-widget-container" id="tvHeatmap" style="min-height:550px; border:1px solid #334155; border-radius:8px; overflow:hidden"></div>
       </div>
 
+      <!-- Quotes + Technicals -->
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:16px; margin-top:16px">
         <div class="tradingview-widget-container" id="tvQuotes" style="min-height:550px; border:1px solid #334155; border-radius:8px; overflow:hidden"></div>
         <div class="tradingview-widget-container" id="tvTechnicals" style="min-height:450px; border:1px solid #334155; border-radius:8px; overflow:hidden"></div>
       </div>
     </div>
-    <!-- END EDIT: TradingView Widgets Section -->
 
     <div class="footer">
       <p>🚀 Built with AI-powered insights • Twelve Data (proxy or direct) + OpenAI</p>
@@ -253,7 +217,14 @@
     // ===== CONFIG =====
     const APP_CFG = (() => {
       const el = document.getElementById('app-config');
-      try { return Object.assign({ API_BASE: '/.netlify/functions', USE_PROXY:true, AUTO_RUN_ANALYSIS:true }, JSON.parse(el?.textContent||'{}')); } catch { return { API_BASE: '/.netlify/functions', USE_PROXY:true, AUTO_RUN_ANALYSIS:true }; }
+      try {
+        return Object.assign(
+          { API_BASE: '/.netlify/functions', USE_PROXY:true, AUTO_RUN_ANALYSIS:true },
+          JSON.parse(el?.textContent || '{}')
+        );
+      } catch {
+        return { API_BASE: '/.netlify/functions', USE_PROXY:true, AUTO_RUN_ANALYSIS:true };
+      }
     })();
     const API = APP_CFG.API_BASE;
 
@@ -266,54 +237,58 @@
     };
 
     // ===== HELPERS =====
-    const settingsLog = (msg) => { const el = document.getElementById('settingsLog'); if(el){ el.textContent += `${new Date().toLocaleTimeString()}  ${msg}
-`; el.scrollTop = el.scrollHeight; } };
+    const settingsLog = (msg) => {
+      const el = document.getElementById('settingsLog');
+      if(el){ el.textContent += `${new Date().toLocaleTimeString()}  ${msg}\n`; el.scrollTop = el.scrollHeight; }
+    };
     const sleep = (ms)=> new Promise(r=>setTimeout(r,ms));
-// NEW: robust response parser to avoid XML/HTML surfacing in UI
-async function parseJsonOrThrow(res){
-  const ct = res.headers.get('content-type') || '';
-  if(ct.includes('application/json')) return res.json();
-  const text = await res.text();
-  // Trim noisy XML/HTML and surface a helpful error
-  const msg = text.slice(0, 300);
-  throw new Error(`Non‑JSON from backend. Is your proxy deployed? First 300 chars: ${msg}`);
-}
-    async function fetchWithBackoff(url, opts={}, attempts=4, base=350){
-  let lastErr;
-  for(let i=0;i<attempts;i++){
-    try{
-      const res = await fetch(url, opts);
-      if(!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      return await parseJsonOrThrow(res);
-    } catch(e){
-      lastErr = e;
-      const d = base * Math.pow(2,i);
-      settingsLog(`Backoff ${i+1}/${attempts}: ${url} → ${e.message}; retry in ${d}ms`);
-      if(i<attempts-1) await sleep(d);
+
+    async function parseJsonOrThrow(res){
+      const ct = res.headers.get('content-type') || '';
+      if(ct.includes('application/json')) return res.json();
+      const text = await res.text();
+      const msg = text.slice(0, 300);
+      throw new Error(`Non-JSON from backend. Is your proxy deployed? First 300 chars: ${msg}`);
     }
-  }
-  throw lastErr;
-}
+    async function fetchWithBackoff(url, opts={}, attempts=4, base=350){
+      let lastErr;
+      for(let i=0;i<attempts;i++){
+        try{
+          const res = await fetch(url, opts);
+          if(!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+          return await parseJsonOrThrow(res);
+        } catch(e){
+          lastErr = e;
+          const d = base * Math.pow(2,i);
+          settingsLog(`Backoff ${i+1}/${attempts}: ${url} → ${e.message}; retry in ${d}ms`);
+          if(i<attempts-1) await sleep(d);
+        }
+      }
+      throw lastErr;
+    }
 
     // Wire settings UI
-    document.getElementById('tdKeyInput').value = settings.tdKey;
-    document.getElementById('openaiEndpointInput').value = settings.openaiEndpoint;
-    document.getElementById('tdDirectCheckbox').checked = settings.tdDirect;
-    document.getElementById('autoRunCheckbox').checked = settings.autoRun;
-    document.getElementById('saveSettingsBtn').onclick = () => {
-      settings.tdKey = document.getElementById('tdKeyInput').value.trim();
-      settings.openaiEndpoint = document.getElementById('openaiEndpointInput').value.trim() || `${API}/openai`;
-      settings.tdDirect = document.getElementById('tdDirectCheckbox').checked;
-      settings.autoRun = document.getElementById('autoRunCheckbox').checked;
-      localStorage.setItem('TD_KEY', settings.tdKey);
-      localStorage.setItem('OPENAI_ENDPOINT', settings.openaiEndpoint);
-      localStorage.setItem('TD_DIRECT', JSON.stringify(settings.tdDirect));
-      localStorage.setItem('AUTO_RUN', JSON.stringify(settings.autoRun));
-      settingsLog('✅ Settings saved');
-    };
-    document.getElementById('toggleSettingsBtn').onclick = () => {
-      const s = document.getElementById('settings'); s.style.display = s.style.display === 'none' ? 'block' : 'none';
-    };
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('tdKeyInput').value = settings.tdKey;
+      document.getElementById('openaiEndpointInput').value = settings.openaiEndpoint;
+      document.getElementById('tdDirectCheckbox').checked = settings.tdDirect;
+      document.getElementById('autoRunCheckbox').checked = settings.autoRun;
+      document.getElementById('saveSettingsBtn').onclick = () => {
+        settings.tdKey = document.getElementById('tdKeyInput').value.trim();
+        settings.openaiEndpoint = document.getElementById('openaiEndpointInput').value.trim() || `${API}/openai`;
+        settings.tdDirect = document.getElementById('tdDirectCheckbox').checked;
+        settings.autoRun = document.getElementById('autoRunCheckbox').checked;
+        localStorage.setItem('TD_KEY', settings.tdKey);
+        localStorage.setItem('OPENAI_ENDPOINT', settings.openaiEndpoint);
+        localStorage.setItem('TD_DIRECT', JSON.stringify(settings.tdDirect));
+        localStorage.setItem('AUTO_RUN', JSON.stringify(settings.autoRun));
+        settingsLog('✅ Settings saved');
+      };
+      document.getElementById('toggleSettingsBtn').onclick = () => {
+        const s = document.getElementById('settings');
+        s.style.display = s.style.display === 'none' ? 'block' : 'none';
+      };
+    });
 
     // ===== CACHES =====
     const CACHE_MS = 5 * 60 * 1000;
@@ -321,81 +296,75 @@ async function parseJsonOrThrow(res){
     const analysisCache = new Map();
 
     // ===== STATIC BASE (fallback so UI is never blank) =====
-    const baseMap = { AAPL:{ price:192.53, high:194.15, low:191.27, volume:41250000, name:'Apple Inc.' }, TSLA:{ price:248.98, high:253.50, low:247.80, volume:67890000, name:'Tesla Inc.' }, NVDA:{ price:877.15, high:882.50, low:870.30, volume:35670000, name:'NVIDIA Corp.' }, SPY:{ price:474.82, high:475.45, low:473.20, volume:45230000, name:'SPDR S&P 500 ETF' }, QQQ:{ price:391.25, high:392.80, low:389.45, volume:28450000, name:'Invesco QQQ ETF' }, MSFT:{ price:431.20, high:433.10, low:428.50, volume:22180000, name:'Microsoft Corp.' }, GOOGL:{ price:175.32, high:177.20, low:174.80, volume:19850000, name:'Alphabet Inc.' }, AMZN:{ price:178.25, high:181.5, low:177.8, volume:28940000, name:'Amazon.com Inc.' }, META:{ price:515.75, high:518.9, low:512.3, volume:15670000, name:'Meta Platforms Inc.' }, NFLX:{ price:487.92, high:492.1, low:485.2, volume:12850000, name:'Netflix Inc.' }, NAS100:{ price:17750, high:17890, low:17680, volume:0, name:'NASDAQ-100 Index (NDX)'} };
+    const baseMap = {
+      AAPL:{ price:192.53, high:194.15, low:191.27, volume:41250000, name:'Apple Inc.' },
+      TSLA:{ price:248.98, high:253.50, low:247.80, volume:67890000, name:'Tesla Inc.' },
+      NVDA:{ price:877.15, high:882.50, low:870.30, volume:35670000, name:'NVIDIA Corp.' },
+      SPY:{ price:474.82, high:475.45, low:473.20, volume:45230000, name:'SPDR S&P 500 ETF' },
+      QQQ:{ price:391.25, high:392.80, low:389.45, volume:28450000, name:'Invesco QQQ ETF' },
+      MSFT:{ price:431.20, high:433.10, low:428.50, volume:22180000, name:'Microsoft Corp.' },
+      GOOGL:{ price:175.32, high:177.20, low:174.80, volume:19850000, name:'Alphabet Inc.' },
+      AMZN:{ price:178.25, high:181.5, low:177.8, volume:28940000, name:'Amazon.com Inc.' },
+      META:{ price:515.75, high:518.9, low:512.3, volume:15670000, name:'Meta Platforms Inc.' },
+      NFLX:{ price:487.92, high:492.1, low:485.2, volume:12850000, name:'Netflix Inc.' },
+      NAS100:{ price:17750, high:17890, low:17680, volume:0, name:'NASDAQ-100 Index (NDX)'}
+    };
 
-    // ===== BACKENDS (proxy-first) =====
+    // ===== QUOTES (proxy-first, optional Twelve Data direct) =====
     function mapSymbol(sym){ return sym.toUpperCase()==='NAS100' ? 'NDX' : sym; }
 
-    // BEGIN EDIT: normalize quote mapping (proxy/direct)
-async function fetchQuote(symbol){
-  const sym = symbol.toUpperCase();
-  const key = `Q_${sym}`; const cached = JSON.parse(localStorage.getItem(key)||'null');
-  if(cached && (Date.now()-new Date(cached.ts).getTime()) < CACHE_MS) return cached.data;
+    async function fetchQuote(symbol){
+      const sym = symbol.toUpperCase();
+      const key = `Q_${sym}`;
+      const cached = JSON.parse(localStorage.getItem(key)||'null');
+      if(cached && (Date.now()-new Date(cached.ts).getTime()) < CACHE_MS) return cached.data;
 
-  try{
-    let data;
-    if(settings.tdDirect){
-      if(!settings.tdKey) throw new Error('No Twelve Data key (Settings)');
-      const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(mapSymbol(sym))}&apikey=${encodeURIComponent(settings.tdKey)}`;
-      const j = await fetchWithBackoff(url);
-      if(j.status==='error' || j.code) throw new Error(j.message||'Twelve Data error');
-      const price = parseFloat(j.close ?? j.price);
-      const prev = parseFloat(j.previous_close ?? j.open ?? price);
-      data = {
-        symbol:sym,
-        name:j.name || sym,
-        price,
-        change: price - prev,
-        changePercent: prev ? ((price - prev)/prev)*100 : 0,
-        high: +(j.high ?? price),
-        low: +(j.low ?? price),
-        volume: +(j.volume || 0),
-        lastUpdate: new Date().toISOString(),
-        source:'Twelve Data (Direct)'
-      };
-    } else {
-      const j = await fetchWithBackoff(`${API}/quote?symbol=${encodeURIComponent(mapSymbol(sym))}`);
-      // Support multiple proxy shapes
-      const price = +( j.price ?? j.close ?? j.last ?? 0 );
-      const change = +( j.change ?? j.change_value ?? 0 );
-      const changePct = +( j.changePercent ?? j.percent_change ?? j.change_percent ?? 0 );
-      data = {
-        symbol:sym,
-        name: j.name || j.companyName || sym,
-        price,
-        change,
-        changePercent: changePct,
-        high: +(j.high ?? price),
-        low: +(j.low ?? price),
-        volume: +(j.volume ?? 0),
-        lastUpdate: j.updated || j.lastUpdate || new Date().toISOString(),
-        source: j.source || 'Proxy'
-      };
+      try{
+        let data;
+        if(settings.tdDirect){
+          if(!settings.tdKey) throw new Error('No Twelve Data key (Settings)');
+          const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(mapSymbol(sym))}&apikey=${encodeURIComponent(settings.tdKey)}`;
+          const j = await fetchWithBackoff(url);
+          if(j.status==='error' || j.code) throw new Error(j.message||'Twelve Data error');
+          const price = parseFloat(j.close ?? j.price);
+          const prev = parseFloat(j.previous_close ?? j.open ?? price);
+          data = {
+            symbol:sym, name:j.name || sym, price,
+            change: price - prev, changePercent: prev ? ((price - prev)/prev)*100 : 0,
+            high: +(j.high ?? price), low: +(j.low ?? price), volume: +(j.volume || 0),
+            lastUpdate: new Date().toISOString(), source:'Twelve Data (Direct)'
+          };
+        } else {
+          const j = await fetchWithBackoff(`${API}/quote?symbol=${encodeURIComponent(mapSymbol(sym))}`);
+          const price = +( j.price ?? j.close ?? j.last ?? 0 );
+          const change = +( j.change ?? j.change_value ?? 0 );
+          const changePct = +( j.changePercent ?? j.percent_change ?? j.change_percent ?? 0 );
+          data = {
+            symbol:sym, name: j.name || j.companyName || sym, price,
+            change, changePercent: changePct,
+            high: +(j.high ?? price), low: +(j.low ?? price), volume: +(j.volume ?? 0),
+            lastUpdate: j.updated || j.lastUpdate || new Date().toISOString(), source: j.source || 'Proxy'
+          };
+        }
+        localStorage.setItem(key, JSON.stringify({ ts:new Date().toISOString(), data }));
+        return data;
+      }catch(e){
+        settingsLog(`⚠️ quote fallback for ${sym}: ${e.message}`);
+        const base = baseMap[sym] || { price:100, high:101, low:99, volume:0, name:sym };
+        return { symbol:sym, price:base.price, high:base.high, low:base.low, volume:base.volume, change:0, changePercent:0, name:base.name, lastUpdate:new Date().toISOString(), source:'⚠️ Local Fallback (stale)' };
+      }
     }
-    localStorage.setItem(key, JSON.stringify({ ts:new Date().toISOString(), data }));
-    return data;
-  }catch(e){
-    settingsLog(`⚠️ quote fallback for ${sym}: ${e.message}`);
-    const base = baseMap[sym] || { price:100, high:101, low:99, volume:0, name:sym };
-    return { symbol:sym, price:base.price, high:base.high, low:base.low, volume:base.volume, change:0, changePercent:0, name:base.name, lastUpdate:new Date().toISOString(), source:'⚠️ Local Fallback (stale)' };
-  }
-}
-// END EDIT
 
     // ===== UI =====
-    // BEGIN EDIT: sync options symbol on setAsset
-function setAsset(symbol){
-  const s = symbol.toUpperCase();
-  document.getElementById('assetInput').value = s;
-  localStorage.setItem('LAST_SYMBOL', s);
-  location.hash = s;
-  const optInput = document.getElementById('optSymbolInput');
-  if (optInput) optInput.value = s;
-  try{ renderTVAdvanced(s); }catch(_){ }
-  if(settings.autoRun){ runAnalysis('market-conditions'); }
-}
-window.setAsset = setAsset;
-// END EDIT
+    function setAsset(symbol){
+      const s = symbol.toUpperCase();
+      document.getElementById('assetInput').value = s;
+      localStorage.setItem('LAST_SYMBOL', s);
+      location.hash = s;
+      try{ renderTVAdvanced(s); }catch(_){ }
+      if(settings.autoRun){ runAnalysis('market-conditions'); }
+    }
+    window.setAsset = setAsset;
 
     async function initializeMarketOverview(){
       const container = document.getElementById('marketOverview');
@@ -417,355 +386,258 @@ window.setAsset = setAsset;
           container.appendChild(el);
         }
         const refresh = document.createElement('div');
-        refresh.className = 'stock-card clickable'; refresh.style.display='flex'; refresh.style.flexDirection='column'; refresh.style.alignItems='center'; refresh.style.justifyContent='center';
+        refresh.className = 'stock-card clickable';
+        refresh.style.display='flex'; refresh.style.flexDirection='column'; refresh.style.alignItems='center'; refresh.style.justifyContent='center';
         refresh.innerHTML = `<div style="font-size:1.6rem;margin-bottom:6px">🔄</div><div style="font-size:.95rem">Refresh</div>`;
         refresh.onclick = ()=>{ marketDataCache.clear(); initializeMarketOverview(); };
         container.appendChild(refresh);
       }catch(err){
         console.error('Overview error', err);
-        container.innerHTML = `<div style=\"grid-column:1/-1;text-align:center;padding:40px;color:#ef4444\"><p>Error loading market data. Please check Settings and try again.</p><button onclick=\"initializeMarketOverview()\" class=\"btn\">Retry</button></div>`;
+        container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:#ef4444"><p>Error loading market data. Please check Settings and try again.</p><button onclick="initializeMarketOverview()" class="btn">Retry</button></div>`;
       }
     }
 
-    // BEGIN EDIT: fix OpenAI call shape
-async function callOpenAI(prompt, market){
-  const cacheKey = `${prompt.substring(0,50)}_${market.symbol}_${market.price}`;
-  const hit = analysisCache.get(cacheKey);
-  if(hit && (Date.now()-hit.ts) < CACHE_MS) return hit.data;
+    async function callOpenAI(prompt, market){
+      const cacheKey = `${prompt.substring(0,50)}_${market.symbol}_${market.price}`;
+      const hit = analysisCache.get(cacheKey);
+      if(hit && (Date.now()-hit.ts) < CACHE_MS) return hit.data;
 
-  try{
-    const r = await fetch(settings.openaiEndpoint, {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({
-        prompt,                       // <-- send a real prompt
-        model: "gpt-5-thinking",
-        max_tokens: 500
-      })
-    });
-    if(!r.ok) throw new Error(`OpenAI endpoint ${r.status}`);
-    const j = await r.json();
-    // support both {text} and chat-based {choices}
-    const content = j.text || j.content || j.choices?.[0]?.message?.content || '';
-    analysisCache.set(cacheKey, { data: content, ts: Date.now() });
-    return content || "**AI returned empty text**";
-  }catch(e){
-    settingsLog(`⚠️ OpenAI call failed: ${e.message}`);
-    return `**AI unavailable** — snapshot for ${market.symbol}: Price $${market.price.toFixed(2)}, range ${market.low.toFixed(2)}–${market.high.toFixed(2)}, vol ${market.volume.toLocaleString()}.`;
-  }
-}
-// END EDIT
+      try{
+        const r = await fetch(settings.openaiEndpoint, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ prompt, model: "gpt-5-thinking", max_tokens: 500 })
+        });
+        if(!r.ok) throw new Error(`OpenAI endpoint ${r.status}`);
+        const j = await r.json();
+        const content = j.text || j.content || j.choices?.[0]?.message?.content || '';
+        analysisCache.set(cacheKey, { data: content, ts: Date.now() });
+        return content || "**AI returned empty text**";
+      }catch(e){
+        settingsLog(`⚠️ OpenAI call failed: ${e.message}`);
+        return `**AI unavailable** — snapshot for ${market.symbol}: Price $${market.price.toFixed(2)}, range ${market.low.toFixed(2)}–${market.high.toFixed(2)}, vol ${market.volume.toLocaleString()}.`;
+      }
+    }
 
-async function runAnalysis(type){
-  const sym = (document.getElementById('assetInput').value || localStorage.getItem('LAST_SYMBOL') || 'SPY').toUpperCase();
-  const section = document.getElementById('resultsSection');
-  const out = document.getElementById('analysisResult');
-  section.style.display = 'block';
-  out.innerHTML = `<div class=\"loading\"><div class=\"spinner\"></div><span>Fetching market data and generating AI analysis...</span></div>`;
-  section.scrollIntoView({ behavior: 'smooth' });
-  try{
-    const mkt = await fetchQuote(sym);
-    const prompts = {
-      'market-conditions': `Analyze current market conditions for ${sym}. Focus on technical levels, momentum, and likely near-term scenarios.`,
-      'position-logic': `Provide entry/exit logic and risk management guidance for ${sym}. Include stops and targets.`,
-      'news-impact': `Summarize likely news/catalyst effects reflected in ${sym}'s recent price/volume; note sentiment.`,
-      'technical-indicators': `Technical read of ${sym}: trend, momentum, and key support/resistance with numeric levels.`,
-      'decision-pros-cons': `Pros & cons of initiating a position in ${sym} at current price; include risk/reward.`,
-      'emerging-trends': `Emerging trends for ${sym} and its sector; what to watch next week.`,
-      'strategy-simplification': `Simple, rules-based trading plan for ${sym}: entries, exits, sizing, review cadence.`,
-      'risk-assessment': `Risk assessment for ${sym}: volatility, liquidity, correlation, and suggested position sizing.`
-    };
-    const prompt = prompts[type] || `Comprehensive, actionable trading insights for ${sym}.`;
-    const ai = await callOpenAI(prompt, mkt);
-    out.innerHTML = `
-      <div style=\"color:#10b981;margin-bottom:10px;font-weight:700\">✅ Real-time AI Analysis</div>
-      <div style=\"color:#64748b;margin-bottom:12px;font-size:.9rem\">Data Source: ${mkt.source} • Updated: ${new Date(mkt.lastUpdate).toLocaleString()}</div>
+    async function runAnalysis(type){
+      const sym = (document.getElementById('assetInput').value || localStorage.getItem('LAST_SYMBOL') || 'SPY').toUpperCase();
+      const section = document.getElementById('resultsSection');
+      const out = document.getElementById('analysisResult');
+      section.style.display = 'block';
+      out.innerHTML = `<div class="loading"><div class="spinner"></div><span>Fetching market data and generating AI analysis...</span></div>`;
+      section.scrollIntoView({ behavior: 'smooth' });
+      try{
+        const mkt = await fetchQuote(sym);
+        const prompts = {
+          'market-conditions': `Analyze current market conditions for ${sym}. Focus on technical levels, momentum, and likely near-term scenarios.`,
+          'position-logic': `Provide entry/exit logic and risk management guidance for ${sym}. Include stops and targets.`,
+          'news-impact': `Summarize likely news/catalyst effects reflected in ${sym}'s recent price/volume; note sentiment.`,
+          'technical-indicators': `Technical read of ${sym}: trend, momentum, and key support/resistance with numeric levels.`,
+          'decision-pros-cons': `Pros & cons of initiating a position in ${sym} at current price; include risk/reward.`,
+          'emerging-trends': `Emerging trends for ${sym} and its sector; what to watch next week.`,
+          'strategy-simplification': `Simple, rules-based trading plan for ${sym}: entries, exits, sizing, review cadence.`,
+          'risk-assessment': `Risk assessment for ${sym}: volatility, liquidity, correlation, and suggested position sizing.`
+        };
+        const prompt = prompts[type] || `Comprehensive, actionable trading insights for ${sym}.`;
+        const ai = await callOpenAI(prompt, mkt);
+        out.innerHTML = `
+          <div style="color:#10b981;margin-bottom:10px;font-weight:700">✅ Real-time AI Analysis</div>
+          <div style="color:#64748b;margin-bottom:12px;font-size:.9rem">Data Source: ${mkt.source} • Updated: ${new Date(mkt.lastUpdate).toLocaleString()}</div>
 ${ai}`;
-  }catch(err){
-    console.error('Analysis error', err);
-    out.innerHTML = `<div style=\"color:#f59e0b;margin-bottom:10px\">⚠️ Analysis temporarily unavailable.</div><div>${err.message}</div>`;
-  }
-}
-window.runAnalysis = runAnalysis;
-
-// BEGIN EDIT: Options client helpers
-function mapOptSymbol(sym){ return sym.toUpperCase()==='NAS100' ? 'NDX' : sym.toUpperCase(); }
-async function apiGet(path, params = {}) {
-  const qs = new URLSearchParams(params).toString();
-  const url = `${path}${qs ? "?" + qs : ""}`;
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(await r.text());
-  return parseJsonOrThrow(r);
-}
-function fmt(x, d=2){ return (x==null || isNaN(x)) ? '—' : Number(x).toFixed(d); }
-async function fetchOptionExpirations(symbol){ return apiGet(`${API}/options-expirations`, { symbol: mapOptSymbol(symbol) }); }
-async function fetchOptionChain(symbol, expiration){ return apiGet(`${API}/options-chain`, { symbol: mapOptSymbol(symbol), expiration }); }
-function currentSymbol(){ return (document.getElementById('assetInput').value || 'AAPL').toUpperCase(); }
-function renderOptTable(chain, filterType='all', moneynessPct=15, spot){
-  const tbody = document.querySelector('#optTable tbody'); tbody.innerHTML = '';
-  const rows = (chain.options || []); let filtered = rows; if (filterType !== 'all') filtered = filtered.filter(r => r.type === filterType);
-  if (spot && moneynessPct>0){ const lo = spot * (1 - moneynessPct/100); const hi = spot * (1 + moneynessPct/100); filtered = filtered.filter(r => r.strike >= lo && r.strike <= hi); }
-  filtered.sort((a,b)=> a.strike - b.strike || (a.type>b.type?1:-1));
-  for(const r of filtered){ const tr = document.createElement('tr'); tr.innerHTML = `
-      <td style="padding:8px;border-bottom:1px solid #334155">${fmt(r.strike,2)}</td>
-      <td style="padding:8px;border-bottom:1px solid #334155;text-transform:capitalize">${r.type}</td>
-      <td style="padding:8px;border-bottom:1px solid #334155;text-align:right">${fmt(r.bid,2)}</td>
-      <td style="padding:8px;border-bottom:1px solid #334155;text-align:right">${fmt(r.ask,2)}</td>
-      <td style="padding:8px;border-bottom:1px solid #334155;text-align:right">${fmt(r.last,2)}</td>
-      <td style="padding:8px;border-bottom:1px solid #334155;text-align:right">${r.iv!=null ? fmt(r.iv*100,2)+'%' : '—'}</td>
-      <td style="padding:8px;border-bottom:1px solid #334155;text-align:right">${fmt(r.delta,3)}</td>
-      <td style="padding:8px;border-bottom:1px solid #334155;text-align:right">${fmt(r.gamma,5)}</td>
-      <td style="padding:8px;border-bottom:1px solid #334155;text-align:right">${fmt(r.theta,3)}</td>
-      <td style="padding:8px;border-bottom:1px solid #334155;text-align:right">${fmt(r.vega,3)}</td>
-      <td style="padding:8px;border-bottom:1px solid #334155;text-align:right">${(r.volume??0).toLocaleString()}</td>
-      <td style="padding:8px;border-bottom:1px solid #334155;text-align:right">${(r.oi??0).toLocaleString()}</td>
-      <td style="padding:8px;border-bottom:1px solid #334155;text-align:center">
-        <button class="btn" data-add="1">＋</button>
-      </td>`;
-    tr.querySelector('[data-add]').onclick = () => addLegFromRow(r); tbody.appendChild(tr); }
-}
-let optLegs = [];
-function addLegFromRow(r){ const mid = (Number(r.bid||0)+Number(r.ask||0))/2 || Number(r.last||0) || 0; optLegs.push({ type:r.type, strike: Number(r.strike), qty:1, price: mid, isShort:false }); renderLegs(); drawPayoff(); }
-function clearLegs(){ optLegs = []; renderLegs(); drawPayoff(); }
-function renderLegs(){ const box = document.getElementById('legsList'); if(!optLegs.length){ box.textContent = 'No legs added. Click “＋” in the chain to add.'; return; } box.innerHTML = optLegs.map((l,i)=> `#${i+1} ${l.isShort?'Short':'Long'} ${l.type.toUpperCase()} ×${l.qty} @ ${fmt(l.price)} strike ${fmt(l.strike)}`).join(' • '); }
-function legPayoffAtExp(underPx, leg){ const { type, strike, qty=1, price, isShort=false } = leg; const intrinsic = type==='call' ? Math.max(0, underPx - strike) : Math.max(0, strike - underPx); const perShare = intrinsic - price; const sign = isShort ? -1 : 1; return 100 * qty * sign * perShare; }
-function strategyPayoffAtExp(underPx, legs){ return legs.reduce((s,l)=> s + legPayoffAtExp(underPx,l), 0); }
-function drawPayoff(){ const div = document.getElementById('optPayoffChart'); div.innerHTML = ''; const w = div.clientWidth || 600, h = div.clientHeight || 200; const svg = document.createElementNS('http://www.w3.org/2000/svg','svg'); svg.setAttribute('width', w); svg.setAttribute('height', h); svg.style.display='block'; div.appendChild(svg); if(!optLegs.length) return; const sym = currentSymbol(); fetchQuote(sym).then(q => { const spot = q.price || 100; const lo = Math.max(1, spot*0.6), hi = spot*1.4, steps = 180; const pts = []; let minPL=Infinity, maxPL=-Infinity; for(let i=0;i<=steps;i++){ const px = lo + (i/steps)*(hi-lo); const pl = strategyPayoffAtExp(px, optLegs); pts.push([px, pl]); if(pl<minPL) minPL = pl; if(pl>maxPL) maxPL = pl; } const pad=24; const x = (p)=> pad + ( (p-lo)/(hi-lo) ) * (w-2*pad); const y = (v)=> h - pad - ( (v-minPL)/(maxPL-minPL || 1) ) * (h-2*pad); const axis = document.createElementNS('http://www.w3.org/2000/svg','path'); axis.setAttribute('d', `M ${pad} ${y(0)} L ${w-pad} ${y(0)} M ${x(spot)} ${pad} L ${x(spot)} ${h-pad}`); axis.setAttribute('stroke', '#334155'); axis.setAttribute('stroke-width','1'); svg.appendChild(axis); const d = pts.map((p,i)=> `${i?'L':'M'} ${x(p[0]).toFixed(1)} ${y(p[1]).toFixed(1)}`).join(' '); const path = document.createElementNS('http://www.w3.org/2000/svg','path'); path.setAttribute('d', d); path.setAttribute('fill','none'); path.setAttribute('stroke','#10b981'); path.setAttribute('stroke-width','2'); svg.appendChild(path); document.getElementById('optPayoffMeta').textContent = `Spot ${sym}: ${fmt(spot)} • P/L at expiration (per 1 contract = 100 shares).`; }); }
-// Wire options events
-(function initOptionsPanel(){
-  const syncBtn = document.getElementById('optSyncSymbolBtn');
-  const clearBtn = document.getElementById('optClearLegsBtn');
-  const presetBtn = document.getElementById('optPresetVerticalBtn');
-  const loadBtn = document.getElementById('optLoadBtn');
-  const optInput = document.getElementById('optSymbolInput');
-
-  function safeLog(msg){ try{ settingsLog(msg); }catch(_){ console.log(msg); } }
-
-  // Helpers already defined above: currentSymbol, fetchOptionExpirations, fetchOptionChain, renderOptTable, fetchQuote
-  async function loadExpirations(){
-    const sym = (optInput.value || currentSymbol()).toUpperCase();
-    const sel = document.getElementById('optExpSelect');
-    sel.innerHTML = `<option>Loading…</option>`;
-    try{
-      const j = await fetchOptionExpirations(sym);
-      const exps = j.expirations || [];
-      sel.innerHTML = exps.map(e=> `<option value="${e}">${e}</option>`).join('') || `<option>No expirations</option>`;
-      document.getElementById('optMeta').textContent = `Vendor: ${j.vendor||'n/a'} • ${exps.length} expirations`;
-    }catch(e){
-      sel.innerHTML = `<option>Error loading</option>`;
-      document.getElementById('optMeta').textContent = `⚠️ ${e.message}`;
+      }catch(err){
+        console.error('Analysis error', err);
+        out.innerHTML = `<div style="color:#f59e0b;margin-bottom:10px">⚠️ Analysis temporarily unavailable.</div><div>${err.message}</div>`;
+      }
     }
-  }
+    window.runAnalysis = runAnalysis;
 
-  async function loadChain(){
-    const sym = (optInput.value || currentSymbol()).toUpperCase();
-    const exp = document.getElementById('optExpSelect').value;
-    const t = document.getElementById('optTypeSelect').value;
-    const pct = Number(document.getElementById('optMoneynessInput').value || 15);
-    document.getElementById('optMeta').textContent = `Loading chain for ${sym} ${exp || ''}…`;
-    const q = await fetchQuote(sym);
-    try{
-      const j = await fetchOptionChain(sym, exp);
-      renderOptTable(j, t, pct, q.price);
-      document.getElementById('optMeta').textContent = `Vendor: ${j.vendor||'demo'} • Options: ${(j.options||[]).length.toLocaleString()} • Updated: ${j.updated||''}`;
-    }catch(e){
-      document.getElementById('optMeta').textContent = `⚠️ ${e.message}`;
-      document.querySelector('#optTable tbody').innerHTML = '';
+    // ===== Options placeholders (UI already present) =====
+    function currentSymbol(){ return (document.getElementById('assetInput').value || 'AAPL').toUpperCase(); }
+
+    // ===== TradingView helpers =====
+    function tvMapSymbol(sym){
+      const s = (sym||'AAPL').toUpperCase();
+      if(s==='NAS100' || s==='NDX') return 'NASDAQ:NDX';
+      const map = { AAPL:'NASDAQ:AAPL', MSFT:'NASDAQ:MSFT', GOOGL:'NASDAQ:GOOGL', AMZN:'NASDAQ:AMZN', META:'NASDAQ:META', NVDA:'NASDAQ:NVDA', TSLA:'NASDAQ:TSLA', NFLX:'NASDAQ:NFLX', QQQ:'NASDAQ:QQQ', SPY:'AMEX:SPY' };
+      return map[s] || s;
     }
-  }
 
-  if(syncBtn) syncBtn.onclick = () => { optInput.value = currentSymbol(); };
-  if(clearBtn) clearBtn.onclick = clearLegs;
-  if(presetBtn) presetBtn.onclick = () => {
-    if(optLegs.length>=2) return drawPayoff();
-    safeLog('ℹ️ Add two call legs at different strikes (one long, one short) to form a vertical.');
-  };
-  if(loadBtn) loadBtn.onclick = loadChain;
+    // Generic injector (correct structure for TradingView)
+    function injectTVWidget(containerId, src, config){
+      const container = document.getElementById(containerId);
+      if(!container) return;
+      container.innerHTML = '';
+      const inner = document.createElement('div');
+      inner.className = 'tradingview-widget-container__widget';
+      container.appendChild(inner);
 
-  // Initial state
-  if(optInput) optInput.value = currentSymbol();
-  loadExpirations();
-})();
-// END EDIT
+      const s = document.createElement('script');
+      s.type = 'text/javascript';
+      s.async = true;
+      s.src = src;
+      s.text = JSON.stringify(config);
+      container.appendChild(s);
+    }
 
-// BEGIN EDIT: TradingView widget helpers
-function tvMapSymbol(sym){
-  const s = (sym||'AAPL').toUpperCase();
-  if(s==='NAS100' || s==='NDX') return 'NASDAQ:NDX';
-  const map = { AAPL:'NASDAQ:AAPL', MSFT:'NASDAQ:MSFT', GOOGL:'NASDAQ:GOOGL', AMZN:'NASDAQ:AMZN', META:'NASDAQ:META', NVDA:'NASDAQ:NVDA', TSLA:'NASDAQ:TSLA', NFLX:'NASDAQ:NFLX', QQQ:'NASDAQ:QQQ', SPY:'AMEX:SPY' };
-  return map[s] || s;
-}
+    function renderTVTicker(){
+      const symbols = [
+        { proName:'NASDAQ:AAPL', title:'AAPL' },
+        { proName:'NASDAQ:MSFT', title:'MSFT' },
+        { proName:'NASDAQ:GOOGL', title:'GOOGL' },
+        { proName:'NASDAQ:AMZN', title:'AMZN' },
+        { proName:'NASDAQ:META', title:'META' },
+        { proName:'NASDAQ:NVDA', title:'NVDA' },
+        { proName:'NASDAQ:TSLA', title:'TSLA' },
+        { proName:'NASDAQ:QQQ', title:'QQQ' },
+        { proName:'AMEX:SPY', title:'SPY' }
+      ];
+      injectTVWidget('tvTicker','https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js',{
+        symbols,
+        showSymbolLogo: true,
+        isTransparent: false,
+        largeChartUrl: '',
+        displayMode: 'adaptive',
+        colorTheme: 'dark',
+        locale: 'en'
+      });
+    }
 
-// Generic injector: clears container and mounts a TradingView widget script with JSON config
-function injectTVWidget(containerId, src, config){
-  const container = document.getElementById(containerId);
-  if(!container) return;
-  container.innerHTML = '';
-  const script = document.createElement('script');
-  script.type = 'text/javascript';
-  script.src = src;
-  script.async = true;
-  script.innerHTML = JSON.stringify(config);
-  container.appendChild(script);
-}
+    function renderTVAdvanced(sym){
+      const symbol = tvMapSymbol(sym);
+      injectTVWidget('tvAdvanced','https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js',{
+        allow_symbol_change: true,
+        calendar: false, details: false, hide_side_toolbar: true,
+        hide_top_toolbar: false, hide_legend: false, hide_volume: false,
+        interval: 'D', locale: 'en', style: '1', symbol,
+        theme: 'dark', timezone: 'Etc/UTC',
+        backgroundColor: '#0F0F0F', gridColor: 'rgba(242,242,242,0.06)',
+        autosize: true
+      });
+    }
 
-function renderTVTicker(){
-  const symbols = [
-    { proName:'NASDAQ:AAPL', title:'AAPL' },
-    { proName:'NASDAQ:MSFT', title:'MSFT' },
-    { proName:'NASDAQ:GOOGL', title:'GOOGL' },
-    { proName:'NASDAQ:AMZN', title:'AMZN' },
-    { proName:'NASDAQ:META', title:'META' },
-    { proName:'NASDAQ:NVDA', title:'NVDA' },
-    { proName:'NASDAQ:TSLA', title:'TSLA' },
-    { proName:'NASDAQ:QQQ', title:'QQQ' },
-    { proName:'AMEX:SPY', title:'SPY' }
-  ];
-  injectTVWidget('tvTicker','https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js',{
-    symbols,
-    showSymbolLogo: true,
-    isTransparent: false,
-    largeChartUrl: '',
-    displayMode: 'adaptive',
-    colorTheme: 'dark',
-    locale: 'en'
-  });
-}
+    function renderTVOverview(){
+      injectTVWidget('tvOverview','https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js',{
+        lineWidth: 2, lineType: 0, chartType: 'area',
+        fontColor: 'rgb(106,109,120)', gridLineColor: 'rgba(242,242,242,0.06)',
+        volumeUpColor: 'rgba(34,171,148,0.5)', volumeDownColor: 'rgba(247,82,95,0.5)',
+        backgroundColor: '#0F0F0F', widgetFontColor: '#DBDBDB',
+        upColor: '#22ab94', downColor:'#f7525f', borderUpColor:'#22ab94', borderDownColor:'#f7525f', wickUpColor:'#22ab94', wickDownColor:'#f7525f',
+        colorTheme: 'dark', isTransparent:false, locale:'en', chartOnly:false, valuesTracking:'1', changeMode:'price-and-percent',
+        symbols:[
+          ['Apple','NASDAQ:AAPL|1D'],
+          ['Google','NASDAQ:GOOGL|1D'],
+          ['Microsoft','NASDAQ:MSFT|1D'],
+          ['NASDAQ:TSLA|1D'],
+          ['NASDAQ:META|1D'],
+          ['NASDAQ:AMZN|1D'],
+          ['NASDAQ:NVDA|1D'],
+          ['AMEX:SPY|1D'],
+          ['NASDAQ:QQQ|1D']
+        ],
+        dateRanges:['1d|1','1m|30','3m|60','12m|1D','60m|1W','all|1M'],
+        autosize:true
+      });
+    }
 
-function renderTVAdvanced(sym){
-  const symbol = tvMapSymbol(sym);
-  injectTVWidget('tvAdvanced','https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js',{
-    allow_symbol_change: true,
-    calendar: false,
-    details: false,
-    hide_side_toolbar: true,
-    hide_top_toolbar: false,
-    hide_legend: false,
-    hide_volume: false,
-    interval: 'D',
-    locale: 'en',
-    style: '1',
-    symbol,
-    theme: 'dark',
-    timezone: 'Etc/UTC',
-    backgroundColor: '#0F0F0F',
-    gridColor: 'rgba(242,242,242,0.06)',
-    autosize: true
-  });
-}
+    function renderTVTimeline(){
+      injectTVWidget('tvTimeline','https://s3.tradingview.com/external-embedding/embed-widget-timeline.js',{
+        displayMode:'regular', feedMode:'all_symbols', colorTheme:'dark',
+        isTransparent:false, locale:'en', width:'100%', height:550
+      });
+    }
+    function renderTVEvents(){
+      injectTVWidget('tvEvents','https://s3.tradingview.com/external-embedding/embed-widget-events.js',{
+        colorTheme:'dark', isTransparent:false, locale:'en',
+        countryFilter:'us,gb,eu,ca,jp', importanceFilter:'-1,0,1', width:'100%', height:550
+      });
+    }
+    function renderTVScreener(){
+      injectTVWidget('tvScreener','https://s3.tradingview.com/external-embedding/embed-widget-screener.js',{
+        market:'forex', showToolbar:true, defaultColumn:'overview', defaultScreen:'general',
+        isTransparent:false, locale:'en', colorTheme:'dark', width:'100%', height:550
+      });
+    }
+    function renderTVHeatmap(){
+      injectTVWidget('tvHeatmap','https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js',{
+        dataSource:'SPX500', blockSize:'market_cap_basic', blockColor:'change', grouping:'sector',
+        locale:'en', colorTheme:'dark', width:'100%', height:'100%', isZoomEnabled:true
+      });
+    }
+    function renderTVQuotes(){
+      injectTVWidget('tvQuotes','https://s3.tradingview.com/external-embedding/embed-widget-market-quotes.js',{
+        colorTheme:'dark', locale:'en', isTransparent:false, showSymbolLogo:true, backgroundColor:'#0F0F0F', width:'100%', height:550,
+        symbolsGroups:[
+          { name:'Indices', symbols:[
+              {name:'FOREXCOM:SPXUSD',displayName:'S&P 500 Index'},
+              {name:'FOREXCOM:NSXUSD',displayName:'US 100 Cash CFD'},
+              {name:'NASDAQ:QQQ',displayName:'QQQ'}
+          ]},
+          { name:'Forex', symbols:[
+              {name:'FX:EURUSD',displayName:'EURUSD'},
+              {name:'FX:GBPUSD',displayName:'GBPUSD'},
+              {name:'FX:USDJPY',displayName:'USDJPY'}
+          ]}
+        ]
+      });
+    }
+    function renderTVTechnicals(){
+      injectTVWidget('tvTechnicals','https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js',{
+        colorTheme:'dark', displayMode:'single', isTransparent:false, locale:'en',
+        interval:'1m', disableInterval:false, width:'100%', height:450, symbol:'NASDAQ:NDX', showIntervalTabs:true
+      });
+    }
+    function renderTVAll(sym){
+      renderTVTicker();
+      renderTVAdvanced(sym||currentSymbol());
+      renderTVOverview();
+      renderTVTimeline();
+      renderTVEvents();
+      renderTVScreener();
+      renderTVHeatmap();
+      renderTVQuotes();
+      renderTVTechnicals();
+    }
 
-function renderTVOverview(){
-  injectTVWidget('tvOverview','https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js',{
-    lineWidth: 2,
-    lineType: 0,
-    chartType: 'area',
-    fontColor: 'rgb(106,109,120)',
-    gridLineColor: 'rgba(242,242,242,0.06)',
-    volumeUpColor: 'rgba(34,171,148,0.5)',
-    volumeDownColor: 'rgba(247,82,95,0.5)',
-    backgroundColor: '#0F0F0F',
-    widgetFontColor: '#DBDBDB',
-    upColor: '#22ab94', downColor:'#f7525f', borderUpColor:'#22ab94', borderDownColor:'#f7525f', wickUpColor:'#22ab94', wickDownColor:'#f7525f',
-    colorTheme: 'dark', isTransparent:false, locale:'en', chartOnly:false, valuesTracking:'1', changeMode:'price-and-percent',
-    symbols:[
-      ['Apple','NASDAQ:AAPL|1D'],
-      ['Google','NASDAQ:GOOGL|1D'],
-      ['Microsoft','NASDAQ:MSFT|1D'],
-      ['NASDAQ:TSLA|1D'],
-      ['NASDAQ:META|1D'],
-      ['NASDAQ:AMZN|1D'],
-      ['NASDAQ:NVDA|1D'],
-      ['AMEX:SPY|1D'],
-      ['NASDAQ:QQQ|1D']
-    ],
-    dateRanges:['1d|1','1m|30','3m|60','12m|1D','60m|1W','all|1M'],
-    autosize:true
-  });
-}
+    // ===== BOOTSTRAP & BINDINGS =====
+    document.addEventListener('DOMContentLoaded', () => {
+      // Render TradingView widgets (arranged)
+      try { renderTVAll(localStorage.getItem('LAST_SYMBOL') || (location.hash||'').replace('#','') || 'AAPL'); } catch(e){ console.warn('TV widgets error', e); }
 
-function renderTVTimeline(){
-  injectTVWidget('tvTimeline','https://s3.tradingview.com/external-embedding/embed-widget-timeline.js',{
-    displayMode:'regular', feedMode:'all_symbols', colorTheme:'dark', isTransparent:false, locale:'en', width:'100%', height:550
-  });
-}
-function renderTVEvents(){
-  injectTVWidget('tvEvents','https://s3.tradingview.com/external-embedding/embed-widget-events.js',{
-    colorTheme:'dark', isTransparent:false, locale:'en', countryFilter:'us,gb,eu,ca,jp', importanceFilter:'-1,0,1', width:'100%', height:550
-  });
-}
-function renderTVScreener(){
-  injectTVWidget('tvScreener','https://s3.tradingview.com/external-embedding/embed-widget-screener.js',{
-    market:'forex', showToolbar:true, defaultColumn:'overview', defaultScreen:'general', isTransparent:false, locale:'en', colorTheme:'dark', width:'100%', height:550
-  });
-}
-function renderTVHeatmap(){
-  injectTVWidget('tvHeatmap','https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js',{
-    dataSource:'SPX500', blockSize:'market_cap_basic', blockColor:'change', grouping:'sector', locale:'en', colorTheme:'dark', width:'100%', height:'100%', isZoomEnabled:true
-  });
-}
-function renderTVQuotes(){
-  injectTVWidget('tvQuotes','https://s3.tradingview.com/external-embedding/embed-widget-market-quotes.js',{
-    colorTheme:'dark', locale:'en', isTransparent:false, showSymbolLogo:true, backgroundColor:'#0F0F0F', width:'100%', height:550,
-    symbolsGroups:[
-      { name:'Indices', symbols:[ {name:'FOREXCOM:SPXUSD',displayName:'S&P 500 Index'}, {name:'FOREXCOM:NSXUSD',displayName:'US 100 Cash CFD'}, {name:'NASDAQ:QQQ',displayName:'QQQ'} ] },
-      { name:'Forex', symbols:[ {name:'FX:EURUSD',displayName:'EURUSD'}, {name:'FX:GBPUSD',displayName:'GBPUSD'}, {name:'FX:USDJPY',displayName:'USDJPY'} ] }
-    ]
-  });
-}
-function renderTVTechnicals(){
-  injectTVWidget('tvTechnicals','https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js',{
-    colorTheme:'dark', displayMode:'single', isTransparent:false, locale:'en', interval:'1m', disableInterval:false, width:'100%', height:450, symbol:'NASDAQ:NDX', showIntervalTabs:true
-  });
-}
-function renderTVAll(sym){
-  renderTVTicker();
-  renderTVAdvanced(sym||currentSymbol());
-  renderTVOverview();
-  renderTVTimeline();
-  renderTVEvents();
-  renderTVScreener();
-  renderTVHeatmap();
-  renderTVQuotes();
-  renderTVTechnicals();
-}
-// END EDIT
+      // Overview cards
+      initializeMarketOverview();
 
-// ===== BOOTSTRAP & BINDINGS =====
-document.addEventListener('DOMContentLoaded', () => {
-  // Render widgets
-  try { renderTVAll(localStorage.getItem('LAST_SYMBOL') || (location.hash||'').replace('#','') || 'AAPL'); } catch(e){ console.warn('TV widgets error', e); }
+      // Quick symbols
+      document.getElementById('quickSymbols')?.addEventListener('click', (e)=>{
+        const btn = e.target.closest('[data-sym]'); if(!btn) return; setAsset(btn.dataset.sym);
+      });
 
-  // Initialize overview cards
-  initializeMarketOverview();
+      // Prompt cards
+      document.querySelectorAll('.prompt-card').forEach(card=>{
+        card.addEventListener('click', ()=> runAnalysis(card.getAttribute('data-analysis')));
+      });
 
-  // Quick symbols click
-  document.getElementById('quickSymbols')?.addEventListener('click', (e)=>{
-    const btn = e.target.closest('[data-sym]'); if(!btn) return; setAsset(btn.dataset.sym);
-  });
+      // Toolbar
+      document.getElementById('refreshBtn').onclick = () => {
+        marketDataCache.clear(); initializeMarketOverview();
+        const s = (document.getElementById('assetInput').value||'AAPL').toUpperCase();
+        renderTVAdvanced(s);
+      };
+      document.getElementById('analyzeNowBtn').onclick = () => runAnalysis('market-conditions');
+      document.getElementById('selfTestBtn').onclick = async () => {
+        const sym = 'AAPL';
+        try { const q = await fetchQuote(sym); settingsLog(`SelfTest ✓ quote ${sym}: $${q.price}`); }
+        catch(e){ settingsLog('SelfTest ✗ quote: '+e.message); }
+        try {
+          const r = await fetch(settings.openaiEndpoint, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({prompt:'ping', model:'gpt-5-thinking', max_tokens:5})});
+          if(!r.ok) throw new Error(r.statusText);
+          settingsLog('SelfTest ✓ openai proxy reachable');
+        } catch(e){ settingsLog('SelfTest ✗ openai proxy: '+e.message); }
+      };
 
-  // Prompt cards
-  document.querySelectorAll('.prompt-card').forEach(card=>{
-    card.addEventListener('click', ()=> runAnalysis(card.getAttribute('data-analysis')));
-  });
-
-  // Buttons
-  document.getElementById('refreshBtn').onclick = () => { marketDataCache.clear(); initializeMarketOverview(); const s = (document.getElementById('assetInput').value||'AAPL').toUpperCase(); renderTVAdvanced(s); };
-  document.getElementById('analyzeNowBtn').onclick = () => runAnalysis('market-conditions');
-  document.getElementById('selfTestBtn').onclick = async () => {
-    const sym = 'AAPL';
-    try {
-      const q = await fetchQuote(sym);
-      settingsLog(`SelfTest ✓ quote ${sym}: $${q.price}`);
-    } catch(e){ settingsLog('SelfTest ✗ quote: '+e.message); }
-    try {
-      const r = await fetch(settings.openaiEndpoint, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({prompt:'ping', model:'gpt-5-thinking', max_tokens:5})});
-      if(!r.ok) throw new Error(r.statusText);
-      settingsLog('SelfTest ✓ openai proxy reachable');
-    } catch(e){ settingsLog('SelfTest ✗ openai proxy: '+e.message); }
-  };
-
-  // Default selection
-  const initial = localStorage.getItem('LAST_SYMBOL') || (location.hash||'').replace('#','') || 'AAPL';
-  document.getElementById('assetInput').value = initial; 
-});
+      // Default symbol
+      const initial = localStorage.getItem('LAST_SYMBOL') || (location.hash||'').replace('#','') || 'AAPL';
+      document.getElementById('assetInput').value = initial;
+    });
   </script>
+</body>
+</html>
