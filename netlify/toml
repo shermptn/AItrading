@@ -1,10 +1,5 @@
-# BEGIN EDIT: Netlify config
-[build]
-  functions = "netlify/functions"
-
-# Optional: make sure we serve the SPA index.html for client routes
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# BEGIN EDIT: netlify.toml
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
 # END EDIT
