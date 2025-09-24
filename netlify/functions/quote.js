@@ -1,47 +1,56 @@
-// netlify/functions/quote.js
-import fetch from "node-fetch";
-
 export async function handler(event) {
   try {
-    const symbol = event.queryStringParameters.symbol || "AAPL";
-
-    // Yahoo Finance API (unofficial but free)
-    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbol)}`;
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Yahoo API error: ${response.status}`);
+    const { symbol } = event.queryStringParameters || {};
+    if (!symbol) {
+      return { statusCode: 400, body: JSON.stringify({ error: "symbol required" }) };
     }
-    const data = await response.json();
 
-    if (!data.quoteResponse.result || data.quoteResponse.result.length === 0) {
+    const tdKey = process.env.TWELVE_DATA_KEY;
+    if (!tdKey) {
+      // Safe demo fallback
       return {
-        statusCode: 404,
-        body: JSON.stringify({ error: "No data found" }),
+        statusCode: 200,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          symbol: symbol.toUpperCase(),
+          price: 100,
+          high: 101,
+          low: 99,
+          volume: 0,
+          name: symbol.toUpperCase(),
+          change: 0,
+          changePercent: 0,
+          source: "⚠️ Local Fallback (stale)",
+          updated: new Date().toISOString()
+        })
       };
     }
 
-    const q = data.quoteResponse.result[0];
+    // Twelve Data proxy call
+    const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(tdKey)}`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`TwelveData ${r.status}`);
+    const j = await r.json();
+    if (j.status === "error" || j.code) throw new Error(j.message || "Twelve Data error");
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        symbol: q.symbol,
-        name: q.shortName,
-        price: q.regularMarketPrice,
-        change: q.regularMarketChange,
-        percent: q.regularMarketChangePercent,
-        high: q.regularMarketDayHigh,
-        low: q.regularMarketDayLow,
-        volume: q.regularMarketVolume,
-        previousClose: q.regularMarketPreviousClose,
-        updated: new Date().toISOString(),
-        source: "Yahoo Finance",
-      }),
+    const price = parseFloat(j.close ?? j.price);
+    const prev  = parseFloat(j.previous_close ?? j.open ?? price);
+
+    const payload = {
+      symbol: symbol.toUpperCase(),
+      name: j.name || symbol.toUpperCase(),
+      price,
+      high: +(j.high ?? price),
+      low: +(j.low ?? price),
+      volume: +(j.volume ?? 0),
+      change: price - prev,
+      changePercent: prev ? ((price - prev) / prev) * 100 : 0,
+      source: "Twelve Data",
+      updated: new Date().toISOString()
     };
-  } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
-    };
+
+    return { statusCode: 200, headers: { "content-type": "application/json" }, body: JSON.stringify(payload) };
+  } catch (e) {
+    return { statusCode: 500, headers: { "content-type": "application/json" }, body: JSON.stringify({ error: String(e) }) };
   }
 }
