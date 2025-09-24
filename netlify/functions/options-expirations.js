@@ -1,20 +1,40 @@
-// netlify/functions/options-expirations.js
-const mapSym = (s) => (s || "").toUpperCase() === "NAS100" ? "NDX" : s;
+// BEGIN EDIT: Options expirations (vendor or demo)
+const POLY = process.env.POLYGON_API_KEY;
 
-function nextFridays(n = 8) {
-  const out = [];
-  for (let i = 0; out.length < n && i < 180; i++) {
-    const d = new Date(Date.now() + i * 86400000);
-    if (d.getDay() === 5) out.push(d.toISOString().slice(0, 10));
+export async function handler(event){
+  try{
+    const symbol = (event.queryStringParameters || {}).symbol;
+    if(!symbol) return json(400, { error: "symbol required" });
+
+    // Demo fallback if no vendor key:
+    if(!POLY){
+      return json(200, { vendor: "demo", expirations: demoExpirations() });
+    }
+
+    // Example Polygon endpoint (adjust if you use a different vendor):
+    const url = `https://api.polygon.io/v3/reference/options/contracts?underlying_ticker=${encodeURIComponent(symbol)}&limit=1000&apiKey=${encodeURIComponent(POLY)}`;
+    const r = await fetch(url);
+    if(!r.ok) return json(r.status, { error: `Polygon ${r.status}`});
+    const j = await r.json();
+
+    const exps = Array.from(new Set((j.results || []).map(x => x.expiration_date))).sort();
+    return json(200, { vendor: "polygon", expirations: exps });
+  }catch(e){
+    return json(500, { error: String(e) });
   }
-  return out;
 }
 
-export async function handler(event) {
-  const symbol = mapSym(event.queryStringParameters?.symbol || "AAPL");
-  return {
-    statusCode: 200,
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ symbol, vendor: "demo", expirations: nextFridays(8) })
-  };
+function demoExpirations(){
+  const today = new Date();
+  const pad = n => String(n).padStart(2, "0");
+  const add = (d, days) => new Date(d.getTime() + days*86400000);
+  return [7, 21, 45, 90].map(dd => {
+    const dt = add(today, dd);
+    return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;
+  });
 }
+
+function json(statusCode, body){
+  return { statusCode, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }, body: JSON.stringify(body) };
+}
+// END EDIT
