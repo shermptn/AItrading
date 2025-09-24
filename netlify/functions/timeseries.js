@@ -1,50 +1,66 @@
-// BEGIN EDIT: Twelve Data time_series proxy (intraday + daily)
-const TD = process.env.TWELVE_DATA_KEY;
-const mapSymbol = (s = "") =>
-  s.toUpperCase() === "NAS100" ? "NDX" : s.toUpperCase();
+// BEGIN EDIT: netlify/functions/timeseries.js — Yahoo Finance time series
+import yahooFinance from 'yahoo-finance2';
+
+const json = (code, body) => ({
+  statusCode: code,
+  headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+  body: JSON.stringify(body),
+});
+
+function mapSymbol(s = '') { return s.toUpperCase() === 'NAS100' ? '^NDX' : s.toUpperCase(); }
 
 export async function handler(event) {
   try {
-    const qs = event.queryStringParameters || {};
-    const symbol = mapSymbol(qs.symbol || "");
-    const interval = (qs.interval || "5min").toLowerCase(); // "1min","5min","1day"
-    const outputsize = qs.outputsize || "200"; // 30/60/200/5000
+    const { symbol: raw, interval = '1m', range } = event.queryStringParameters || {};
+    if (!raw) return json(400, { error: 'symbol required' });
+    const symbol = mapSymbol(raw);
 
-    if (!symbol) return json(400, { error: "symbol required" });
+    // Choose sane default ranges
+    const i = (interval || '1m').toLowerCase();
+    let rng = range;
+    if (!rng) rng = i === '1m' || i === '5m' ? '1d' : (i === '1d' ? '1y' : '1mo');
 
-    if (!TD) {
-      return json(200, {                  // demo fallback
-        symbol, interval, source: "⚠️ Local Fallback (no TWELVE_DATA_KEY)",
-        candles: [], updated: new Date().toISOString()
-      });
+    // Fetch Yahoo chart
+    const chart = await yahooFinance.chart(symbol, { interval: i, range: rng });
+    // yahoo-finance2 gives a normalized shape under "quotes"
+    let rows = [];
+    if (chart?.quotes?.length) {
+      rows = chart.quotes.map(q => ({
+        datetime: new Date(q.date).toISOString(),
+        open: +q.open,
+        high: +q.high,
+        low: +q.low,
+        close: +q.close,
+        volume: +q.volume
+      }));
+    } else {
+      // fallback for older shapes, just in case
+      const r = chart?.result?.[0];
+      const t = r?.timestamp || [];
+      const o = r?.indicators?.quote?.[0]?.open || [];
+      const h = r?.indicators?.quote?.[0]?.high || [];
+      const l = r?.indicators?.quote?.[0]?.low || [];
+      const c = r?.indicators?.quote?.[0]?.close || [];
+      const v = r?.indicators?.quote?.[0]?.volume || [];
+      rows = t.map((ts, idx) => ({
+        datetime: new Date(ts * 1000).toISOString(),
+        open: +o[idx],
+        high: +h[idx],
+        low: +l[idx],
+        close: +c[idx],
+        volume: +v[idx]
+      })).filter(rw => Number.isFinite(rw.close));
     }
-
-    // Twelve Data: https://api.twelvedata.com/time_series
-    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&outputsize=${encodeURIComponent(outputsize)}&order=ASC&apikey=${encodeURIComponent(TD)}`;
-    const r = await fetch(url);
-    if (!r.ok) return json(r.status, { error: `Twelve Data ${r.status}` });
-    const j = await r.json();
-
-    if (j.status === "error" || j.code) {
-      return json(502, { error: j.message || "Twelve Data error", raw: j });
-    }
-
-    const candles = (j.values || []).map(v => ({
-      time: v.datetime,                // ISO string
-      open: +v.open, high: +v.high, low: +v.low, close: +v.close,
-      volume: v.volume ? +v.volume : null,
-    }));
 
     return json(200, {
-      symbol, interval, candles,
-      updated: new Date().toISOString(),
-      source: "Twelve Data (Proxy)"
+      symbol: raw.toUpperCase(),
+      interval: i,
+      range: rng,
+      candles: rows,
+      source: 'Yahoo (Chart)'
     });
   } catch (e) {
     return json(500, { error: String(e) });
   }
-}
-function json(statusCode, body){
-  return { statusCode, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }, body: JSON.stringify(body) };
 }
 // END EDIT
