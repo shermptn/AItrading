@@ -1,8 +1,9 @@
-// BEGIN EDIT: netlify/functions/package.json
 {
+  "name": "ai-trading-functions",
+  "private": true,
+  "version": "1.0.0",
   "type": "module",
-  "dependencies": {
-    "yahoo-finance2": "^2.12.0"
-  }
+  "engines": { "node": ">=18" },
+  "dependencies": {},
+  "devDependencies": {}
 }
-// END EDIT
