@@ -2,146 +2,39 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Trading Insights Dashboard</title>
-
-  <!-- Basic config (no secrets) -->
+  <!-- BEGIN EDIT: app-config placeholder (read-only, no secrets) -->
   <script id="app-config" type="application/json">{
     "API_BASE": "/.netlify/functions",
-    "AUTO_RUN_ANALYSIS": false
+    "USE_PROXY": true,
+    "AUTO_RUN_ANALYSIS": true
   }</script>
-
+  <!-- END EDIT -->
   <style>
-    :root { color-scheme: dark; }
-    *{box-sizing:border-box} body{margin:0;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#0b1220;color:#e5e7eb}
-    .wrap{max-width:980px;margin:0 auto;padding:24px}
-    h1{font-size:1.8rem;margin:0 0 10px;background:linear-gradient(45deg,#60a5fa,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-    .row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
-    input,button,select{padding:10px 12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e5e7eb}
-    button{cursor:pointer}
-    .card{background:#0f172a;border:1px solid #283548;border-radius:12px;padding:16px;margin:12px 0}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
-    .note{color:#94a3b8;font-size:.9rem}
-    .good{color:#34d399} .bad{color:#f87171}
-    table{width:100%;border-collapse:collapse} th,td{padding:8px;border-bottom:1px solid #1f2a39;text-align:right} th{text-align:left}
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <h1>AI Trading Insights Dashboard</h1>
-    <p class="note">Netlify Functions demo. If this loads prices, your deploy + env vars are good.</p>
-
-    <div class="row">
-      <input id="symbolInput" placeholder="Symbol e.g. AAPL" value="AAPL" />
-      <button id="loadBtn">Load Quote</button>
-      <button id="watchBtn">Load Watchlist</button>
-    </div>
-
-    <div id="quoteCard" class="card">
-      <h3>Quote</h3>
-      <div id="quoteOut" class="note">Press “Load Quote”.</div>
-    </div>
-
-    <div class="card">
-      <h3>Watchlist</h3>
-      <div id="watchlist" class="grid"></div>
-    </div>
-
-    <div class="card">
-      <h3>Intraday Sample (first 5 candles)</h3>
-      <div id="seriesOut" class="note">Will show after “Load Quote”.</div>
-    </div>
-
-    <p class="note">Data via <code>/.netlify/functions/quote</code> and <code>/timeseries</code>. No API keys in the browser.</p>
-  </div>
-
-  <script>
-    // ---- Config
-    const CFG = (()=>{ try { return Object.assign({ API_BASE:"/.netlify/functions" }, JSON.parse(document.getElementById('app-config').textContent||'{}')); } catch { return { API_BASE:"/.netlify/functions" }; } })();
-    const API = CFG.API_BASE;
-
-    // ---- Helpers
-    const $ = s => document.querySelector(s);
-    const fmt2 = n => (n==null||isNaN(n)) ? '—' : Number(n).toFixed(2);
-    async function jget(path, params={}) {
-      const qs = new URLSearchParams(params).toString();
-      const url = `${path}${qs ? "?" + qs : ""}`;
-      const r = await fetch(url);
-      if (!r.ok) throw new Error(await r.text());
-      return r.json();
-    }
-
-    // ---- Functions wrappers
-    async function fetchQuote(symbol){
-      // try proxy function
-      return jget(`${API}/quote`, { symbol });
-    }
-    async function fetchSeries(symbol, interval="1min", outputsize=200){
-      return jget(`${API}/timeseries`, { symbol, interval, outputsize });
-    }
-
-    // ---- UI actions
-    async function loadQuote(){
-      const sym = $('#symbolInput').value.trim().toUpperCase() || 'AAPL';
-      $('#quoteOut').textContent = 'Loading…';
-      $('#seriesOut').textContent = 'Loading…';
-
-      try {
-        const q = await fetchQuote(sym);
-        const price = q.price ?? q.close ?? 0;
-        const change = q.change ?? 0;
-        const pct = q.changePercent ?? q.percent_change ?? 0;
-
-        $('#quoteOut').innerHTML =
-          `Symbol: <b>${sym}</b><br>
-           Price: <b>${fmt2(price)}</b>  |  Change: <b class="${(change>=0)?'good':'bad'}">${fmt2(change)} (${fmt2(pct)}%)</b><br>
-           High/Low: ${fmt2(q.high)} / ${fmt2(q.low)}  |  Vol: ${(q.volume??0).toLocaleString()}<br>
-           Source: ${q.source || 'Proxy'}  •  Updated: ${q.updated || q.lastUpdate || new Date().toISOString()}`;
-
-        const ts = await fetchSeries(sym, "1min", 20);
-        const rows = (ts.candles||[]).slice(0,5).map(c=>(
-          `<tr><td style="text-align:left">${c.time}</td><td>${fmt2(c.open)}</td><td>${fmt2(c.high)}</td><td>${fmt2(c.low)}</td><td>${fmt2(c.close)}</td><td>${(c.volume||0).toLocaleString()}</td></tr>`
-        )).join('');
-        $('#seriesOut').innerHTML = `<table>
-          <thead><tr><th>Time</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Vol</th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="6" class="bad">No candles returned</td></tr>'}</tbody>
-        </table>`;
-      } catch (e) {
-        $('#quoteOut').innerHTML = `<span class="bad">Error: ${e.message}</span>`;
-        $('#seriesOut').textContent = '—';
-      }
-    }
-
-    async function loadWatchlist(){
-      const list = ['AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX','QQQ','SPY','NAS100'];
-      $('#watchlist').innerHTML = 'Loading…';
-      try{
-        const results = await Promise.all(list.map(async s => {
-          try {
-            const q = await fetchQuote(s === 'NAS100' ? 'NDX' : s);
-            const price = q.price ?? q.close ?? 0;
-            const change = q.change ?? 0;
-            const pct = q.changePercent ?? q.percent_change ?? 0;
-            return `<div class="card"><div style="font-weight:700">${s}</div>
-              <div>Px ${fmt2(price)} • <span class="${(change>=0)?'good':'bad'}">${fmt2(change)} (${fmt2(pct)}%)</span></div>
-              <div class="note">H/L ${fmt2(q.high)} / ${fmt2(q.low)} • Vol ${(q.volume??0).toLocaleString()}</div></div>`;
-          } catch { return `<div class="card"><div style="font-weight:700">${s}</div><div class="bad">Failed</div></div>`; }
-        }));
-        $('#watchlist').innerHTML = results.join('');
-      }catch(e){
-        $('#watchlist').innerHTML = `<span class="bad">Error: ${e.message}</span>`;
-      }
-    }
-
-    // ---- Events
-    $('#loadBtn').onclick = loadQuote;
-    $('#watchBtn').onclick = loadWatchlist;
-
-    // Autoload first quote for sanity
-    loadQuote();
-  </script>
-</body>
-</html>    .input-group input { width: 100%; padding: 12px; background: #1e293b; border: 1px solid #475569; border-radius: 8px; color: white; font-size: 1rem; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f1419 0%, #1e3a8a 50%, #0f1419 100%); color: #fff; min-height: 100vh; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .header { text-align: center; margin-bottom: 24px; }
+    .header h1 { font-size: 2.4rem; background: linear-gradient(45deg, #3b82f6, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+    .header p { color: #94a3b8; font-size: 1.02rem; }
+    .toolbar { display:flex; gap:10px; justify-content:center; margin: 14px 0 26px; flex-wrap: wrap; }
+    .btn { background:#374151; color:#fff; border:1px solid #4b5563; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:.9rem; }
+    .btn:hover { background:#4b5563; }
+    .market-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 24px; }
+    .stock-card { background: rgba(30, 41, 59, 0.8); border: 1px solid #334155; border-radius: 12px; padding: 20px; backdrop-filter: blur(10px); transition:.2s ease; }
+    .stock-card.clickable{ cursor:pointer; }
+    .stock-card.clickable:hover{ transform: translateY(-2px); border-color:#3b82f6; }
+    .stock-symbol { font-weight: bold; font-size: 1.05rem; margin-bottom: 6px; display:flex; justify-content:space-between; align-items:center; }
+    .stock-price { font-size: 1.55rem; font-weight: bold; margin-bottom: 6px; }
+    .stock-change { font-size: 0.9rem; }
+    .stock-details { font-size: .85rem; color: #94a3b8; margin-top: 8px; }
+    .positive { color: #10b981; } .negative { color: #ef4444; }
+    .analysis-section { background: rgba(30, 41, 59, 0.8); border: 1px solid #334155; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+    .analysis-section h3 { margin-bottom: 14px; display:flex; align-items:center; gap:10px }
+    .input-group { margin-bottom: 14px; }
+    .input-group label { display: block; margin-bottom: 8px; font-weight: 500; }
+    .input-group input { width: 100%; padding: 12px; background: #1e293b; border: 1px solid #475569; border-radius: 8px; color: white; font-size: 1rem; }
     .input-row { display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center; }
     .quick-symbols { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
     .symbol-btn { background: #374151; color: white; border: 1px solid #4b5563; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
