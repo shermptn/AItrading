@@ -1,92 +1,61 @@
-// Netlify Function: OpenAI relay (CommonJS style to avoid res.set issues)
-const fetch = global.fetch;
-
-const JSON_HEADERS = {
-  "content-type": "application/json; charset=utf-8",
-  "cache-control": "no-store"
-};
-
-const ok = (data, extra = {}) => ({
-  statusCode: 200,
-  headers: { ...JSON_HEADERS, ...extra },
-  body: JSON.stringify(data)
-});
-
-const err = (status, message, extra = {}) => ({
-  statusCode: status,
-  headers: { ...JSON_HEADERS, ...extra },
-  body: JSON.stringify({ error: message, status })
-});
-
+// netlify/functions/openai.js
 exports.handler = async (event) => {
   try {
-    // Health check
-    if (event.httpMethod === "GET" && (event.queryStringParameters?.ping || "") !== "") {
-      return ok({ ok: true, message: "openai function alive" });
+    // Quick health check
+    if (event.queryStringParameters?.ping) {
+      return {
+        statusCode: 200,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ok: true })
+      };
     }
 
     if (event.httpMethod !== "POST") {
-      return err(405, "Method not allowed. Use POST.");
+      return { statusCode: 405, body: "Method Not Allowed" };
     }
 
-    const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_API_TOKEN;
+    const { prompt } = JSON.parse(event.body || "{}");
+    if (!prompt) {
+      return { statusCode: 400, body: "Missing prompt" };
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      // This tells you the env var isn't being read in the runtime
-      return err(500, "Missing OPENAI_API_KEY in Netlify env.");
+      return { statusCode: 500, body: "Missing OPENAI_API_KEY" };
     }
 
-    let body;
-    try {
-      body = JSON.parse(event.body || "{}");
-    } catch {
-      return err(400, "Invalid JSON body.");
-    }
-
-    const prompt = (body.prompt || "").toString().trim();
-    if (!prompt) return err(400, "Missing 'prompt'.");
-
-    // Use a *real* model that exists on OpenAI. Fallback is gpt-4o-mini.
-    // (If you have access to a different model, you can pass it from the client.)
-    const model = (body.model || "gpt-4o-mini").toString().trim();
-    const max_tokens = Number.isFinite(body.max_tokens) ? body.max_tokens : 500;
-
-    // Call OpenAI Chat Completions
-    const r = await fetch("https://api.openai.com/v1/chat/completions", {
+    // Call OpenAI Responses API (JSON mode)
+    const r = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
+        "content-type": "application/json",
+        authorization: `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model,
-        messages: [{ role: "user", content: prompt }],
-        max_tokens
+        model: "gpt-4o-mini",          // safe, widely available
+        input: `You are a cautious trading explainer. Format in markdown.\n\nUser prompt: ${prompt}`,
+        max_output_tokens: 500
       })
     });
 
-    // If OpenAI returns non-2xx, surface it so the UI can show a helpful message
+    const text = await r.text();
     if (!r.ok) {
-      let detail = "";
-      try {
-        const j = await r.json();
-        detail = j?.error?.message || JSON.stringify(j);
-      } catch {
-        detail = await r.text();
-      }
-      // Typical messages you'll see: 401/403 (auth), 404 (bad model), 429/402 (quota), 500 (server)
-      return err(502, `OpenAI request failed (${r.status}): ${detail}`);
+      return { statusCode: r.status, body: text || "Upstream error" };
     }
+    const j = JSON.parse(text);
+    const content =
+      j.output_text ||
+      j.text ||
+      j.content ||
+      j.choices?.[0]?.message?.content ||
+      "(no content)";
 
-    const j = await r.json();
-    const content = j?.choices?.[0]?.message?.content || "";
-
-    return ok({
-      text: content,
-      model,
-      usage: j?.usage || null
-    });
-
+    return {
+      statusCode: 200,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: content })
+    };
   } catch (e) {
-    return err(500, e?.message || "Server error");
+    return { statusCode: 500, body: e.message || "Server error" };
   }
 };
