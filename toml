@@ -4,4 +4,4 @@
 
 [functions]
   directory = "netlify/functions"
-  node_bundler = "esbuild"   # good defaults; works with ESM + native fetch
+  node_bundler = "esbuild"
