@@ -1,11 +1,10 @@
 import { useEffect, useRef } from 'react';
 
-declare global {
-  interface Window { TradingView: any; }
-}
+declare global { interface Window { TradingView: any; } }
 
 export default function MainChart({ symbol }: { symbol: string }) {
   const container = useRef<HTMLDivElement>(null);
+  const isScriptAppended = useRef(false);
 
   useEffect(() => {
     const initChart = () => {
@@ -19,19 +18,18 @@ export default function MainChart({ symbol }: { symbol: string }) {
         theme: "dark",
         style: "1",
         timezone: "Etc/UTC",
-        withdateranges: true,
-        allow_symbol_change: false,
         hide_side_toolbar: false,
         details: true,
       });
     };
 
-    if (!window.TradingView) {
+    if (!window.TradingView && !isScriptAppended.current) {
       const script = document.createElement("script");
       script.src = "https://s3.tradingview.com/tv.js";
       script.async = true;
       script.onload = initChart;
       document.body.appendChild(script);
+      isScriptAppended.current = true;
     } else {
       initChart();
     }
