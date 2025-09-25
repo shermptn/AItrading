@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import CommandCenterPage from './pages/CommandCenterPage';
-import MarketPulsePage from './pages-old/MarketPulsePage'; // Corrected path if needed
+import MarketPulsePage from './pages/MarketPulsePage'; // <-- This path is now correct
 import KnowledgeHubPage from './pages/KnowledgeHubPage';
 import { useAuth } from './auth/AuthContext';
 
@@ -47,4 +47,4 @@ function App() {
   );
 }
 
-export default App; // <-- Ensure "default" is here
+export default App;
