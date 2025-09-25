@@ -3,33 +3,40 @@ import AILaunchpad from './AILaunchpad';
 import MainChart from './MainChart';
 import NewsTicker from './NewsTicker';
 import Watchlist from './Watchlist';
+import DeepDiveModal from '../DeepDive/DeepDiveModal'; // <-- Import the modal
 
 export default function CommandCenter() {
   const [activeSymbol, setActiveSymbol] = useState('SPY');
+  const [deepDiveSymbol, setDeepDiveSymbol] = useState<string | null>(null);
+
+  // Function to open the modal
+  const handleAnalysis = (symbol: string) => {
+    setDeepDiveSymbol(symbol);
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* News Ticker - Left Column */}
-        <div className="lg:col-span-3">
-          <NewsTicker />
+    <>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-3">
+            <NewsTicker />
+          </div>
+          <div className="lg:col-span-6">
+            <MainChart symbol={activeSymbol} />
+          </div>
+          <div className="lg:col-span-3">
+            <Watchlist onSymbolSelect={setActiveSymbol} />
+          </div>
         </div>
-
-        {/* Main Chart - Center Column */}
-        <div className="lg:col-span-6">
-          <MainChart symbol={activeSymbol} />
-        </div>
-
-        {/* Watchlist - Right Column */}
-        <div className="lg:col-span-3">
-          <Watchlist onSymbolSelect={setActiveSymbol} />
+        <div>
+          <AILaunchpad initialSymbol={activeSymbol} onAnalyze={handleAnalysis} />
         </div>
       </div>
-
-      {/* AI Launchpad - Full Width Section */}
-      <div>
-        <AILaunchpad initialSymbol={activeSymbol} />
-      </div>
-    </div>
+      
+      {/* Conditionally render the modal */}
+      {deepDiveSymbol && (
+        <DeepDiveModal symbol={deepDiveSymbol} onClose={() => setDeepDiveSymbol(null)} />
+      )}
+    </>
   );
 }
