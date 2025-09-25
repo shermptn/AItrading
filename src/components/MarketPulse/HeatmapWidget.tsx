@@ -6,18 +6,20 @@ export default function HeatmapWidget() {
   const container = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!container.current) return;
-    
-    const script = document.createElement("script");
-    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js";
-    script.async = true;
-    script.innerHTML = JSON.stringify({
-      "dataSource": "SPX500",
-      "colorTheme": "dark",
-      "width": "100%",
-      "height": "100%"
-      //... other heatmap settings
-    });
+  if (!container.current) return;
+  container.current.innerHTML = '';
+  const script = document.createElement("script");
+  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js";
+  script.async = true;
+  script.innerHTML = JSON.stringify({
+    "dataSource": "SPX500",
+    "colorTheme": "dark",
+    "width": "100%",
+    "height": "100%"
+    //... other heatmap settings
+  });
+  container.current.appendChild(script);
+}, []);
 
     container.current.appendChild(script);
   }, []); // Empty dependency array means this runs only once
