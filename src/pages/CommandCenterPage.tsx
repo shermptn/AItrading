@@ -14,22 +14,21 @@ export default function CommandCenterPage() {
     setActiveSymbol(symbol); // Update the chart
     setDeepDiveSymbol(symbol); // Open the analysis modal
   };
-<div className="text-xs text-neutral-500 mb-2">
-  Click a ticker in the watchlist for instant analysis.
-</div>
+
   return (
     <>
+      <div className="text-xs text-neutral-500 mb-2">
+        Click a ticker in the watchlist for instant analysis.
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-3 lg:h-[520px]"><NewsTicker /></div>
         <div className="lg:col-span-6"><MainChart symbol={activeSymbol} /></div>
         <div className="lg:col-span-3 lg:h-[520px]"><Watchlist onSymbolSelect={handleSymbolSelect} /></div>
       </div>
-      
       {/* The AI Launchpad is now a secondary tool */}
       <div className="mt-8">
         <AILaunchpad initialSymbol={activeSymbol} onAnalyze={setDeepDiveSymbol} />
       </div>
-
       {deepDiveSymbol && (
         <DeepDiveModal symbol={deepDiveSymbol} onClose={() => setDeepDiveSymbol(null)} />
       )}
