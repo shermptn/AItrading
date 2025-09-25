@@ -1,7 +1,5 @@
-// netlify/functions/openai.js
 exports.handler = async (event) => {
   try {
-    // Quick health check
     if (event.queryStringParameters?.ping) {
       return {
         statusCode: 200,
@@ -24,17 +22,20 @@ exports.handler = async (event) => {
       return { statusCode: 500, body: "Missing OPENAI_API_KEY" };
     }
 
-    // Call OpenAI Responses API (JSON mode)
-    const r = await fetch("https://api.openai.com/v1/responses", {
+    // Use the correct OpenAI endpoint and payload for chat/completions
+    const r = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",          // safe, widely available
-        input: `You are a cautious trading explainer. Format in markdown.\n\nUser prompt: ${prompt}`,
-        max_output_tokens: 500
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: "You are a cautious trading explainer. Format in markdown." },
+          { role: "user", content: prompt }
+        ],
+        max_tokens: 500
       })
     });
 
@@ -44,10 +45,10 @@ exports.handler = async (event) => {
     }
     const j = JSON.parse(text);
     const content =
+      j.choices?.[0]?.message?.content ||
       j.output_text ||
       j.text ||
       j.content ||
-      j.choices?.[0]?.message?.content ||
       "(no content)";
 
     return {
