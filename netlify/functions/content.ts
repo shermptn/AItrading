@@ -2,16 +2,15 @@ import type { Handler } from "@netlify/functions";
 import path from "path";
 import fs from "fs/promises";
 
-// Helper to safely construct file paths
+// This corrected path works with Netlify's build process
 const getContentPath = (...paths: string[]) => {
-  return path.join(process.cwd(), 'content', 'knowledge-hub', ...paths);
+  return path.resolve(process.cwd(), 'content', 'knowledge-hub', ...paths);
 };
 
 export const handler: Handler = async (event) => {
   const slug = event.queryStringParameters?.slug;
 
   try {
-    // If a slug is provided, fetch a single article
     if (slug) {
       const filePath = getContentPath(`${slug}.json`);
       const data = await fs.readFile(filePath, "utf-8");
@@ -22,7 +21,6 @@ export const handler: Handler = async (event) => {
       };
     }
 
-    // Otherwise, fetch the list of all articles from the manifest
     const manifestPath = getContentPath('_manifest.json');
     const data = await fs.readFile(manifestPath, "utf-8");
     return {
@@ -32,7 +30,10 @@ export const handler: Handler = async (event) => {
     };
 
   } catch (e: any) {
-    console.error(e);
-    return { statusCode: 500, body: JSON.stringify({ error: "Could not load content." }) };
+    console.error("Failed to read content file:", e.message);
+    return { 
+      statusCode: 500, 
+      body: JSON.stringify({ error: "Could not load content from path." }) 
+    };
   }
 };
