@@ -37,20 +37,12 @@ export default function MainChart({ symbol }: { symbol: string }) {
       initChart();
     }
 
-    // 🔴 Add cleanup to prevent widgets stacking
+    // Cleanup to prevent widgets stacking
     return () => {
       if (container.current) container.current.innerHTML = "";
-      // If TradingView exposes a destroy method, call it here (not always needed)
+      // If TradingView exposes a destroy method, call it here
     };
   }, [symbol]);
 
   return <div className="h-[520px] w-full rounded-xl overflow-hidden bg-neutral-900" ref={container} />;
 }
-useEffect(() => {
-  let widget: any;
-  // ...existing code...
-  return () => {
-    if (container.current) container.current.innerHTML = "";
-    // Optionally, if TradingView provides a destroy method, call it on widget here
-  };
-}, [symbol]);
