@@ -71,3 +71,9 @@ export const useAuth = () => {
   }
   return context;
 };
+// Add console.error for better debugging
+if (!res.ok) {
+  const errorBody = await res.json().catch(() => ({ error: "An unknown error occurred" }));
+  console.error(`[API ERROR] ${path}:`, errorBody.error);
+  throw new Error(errorBody.error || "Server error");
+}
