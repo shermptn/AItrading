@@ -51,7 +51,9 @@ export default function Watchlist({ onSymbolSelect }: { onSymbolSelect: (symbol:
               >
                 <div>
                   <p className="font-bold">{quote.symbol}</p>
-                  <p className="text-xs text-neutral-500">{(quote.name || 'N/A').split(' ')[0]}</p>
+                  <p className="text-xs text-neutral-500">
+  {quote.price === 0 && quote.name.startsWith('Error') ? 'Data unavailable' : (quote.name || 'N/A').split(' ')[0]}
+</p>
                 </div>
                 <div className="text-right">
                   <p className="font-mono">{quote.price > 0 ? `$${quote.price.toFixed(2)}` : 'Error'}</p>
