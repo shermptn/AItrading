@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import CommandCenterPage from './pages/CommandCenterPage';
-import MarketPulsePage from './pages/MarketPulsePage'; // <-- Import new page
+import MarketPulsePage from './pages/MarketPulsePage';
+import KnowledgeHubPage from './pages/KnowledgeHubPage'; // <-- Import new page
 
-type Page = 'commandCenter' | 'marketPulse';
+type Page = 'commandCenter' | 'marketPulse' | 'knowledgeHub';
 
 function App() {
   const [activePage, setActivePage] = useState<Page>('commandCenter');
@@ -21,19 +22,16 @@ function App() {
   return (
     <div className="bg-neutral-950 text-neutral-200 min-h-screen font-sans">
       <div className="container mx-auto p-4">
-        {/* Main Navigation */}
         <nav className="mb-6 flex gap-2">
           <NavButton page="commandCenter" label="Command Center" />
           <NavButton page="marketPulse" label="Market Pulse" />
-          {/* "Knowledge Hub" will be added in Milestone 4 */}
+          <NavButton page="knowledgeHub" label="Knowledge Hub" />
         </nav>
 
-        {/* Conditional Page Rendering */}
         {activePage === 'commandCenter' && <CommandCenterPage />}
         {activePage === 'marketPulse' && <MarketPulsePage />}
+        {activePage === 'knowledgeHub' && <KnowledgeHubPage />}
       </div>
     </div>
   );
 }
-
-export default App;
