@@ -20,6 +20,9 @@ export default function NewsTicker() {
         ) : error ? (
           <p className="text-red-400">Error: {error.message}</p>
         ) : (
+                  ) : data?.items.length === 0 ? (
+          <p className="text-neutral-400">No news available right now.</p>
+        ) : (
           <div className="space-y-3">
             {data?.items.map((item, index) => (
               <a href={item.url} key={index} target="_blank" rel="noopener noreferrer" className="block p-2 rounded-md hover:bg-neutral-800">
@@ -28,6 +31,7 @@ export default function NewsTicker() {
               </a>
             ))}
           </div>
+
         )}
       </div>
     </div>
