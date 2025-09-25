@@ -1,10 +1,7 @@
 import { useEffect, useRef } from 'react';
 
-// Make TradingView available on the window object
 declare global {
-  interface Window {
-    TradingView: any;
-  }
+  interface Window { TradingView: any; }
 }
 
 export default function MainChart({ symbol }: { symbol: string }) {
@@ -13,19 +10,19 @@ export default function MainChart({ symbol }: { symbol: string }) {
   useEffect(() => {
     const initChart = () => {
       if (!container.current || !window.TradingView) return;
-      container.current.innerHTML = "";
+      container.current.innerHTML = ""; // Clear previous widget
       new window.TradingView.widget({
         symbol: symbol,
-        interval: "60", // 1 hour
+        interval: "60",
         container: container.current,
         autosize: true,
         theme: "dark",
         style: "1",
         timezone: "Etc/UTC",
-        toolbar_bg: "#1e293b",
         withdateranges: true,
         allow_symbol_change: false,
         hide_side_toolbar: false,
+        details: true,
       });
     };
 
