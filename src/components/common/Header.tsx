@@ -30,7 +30,6 @@ export default function Header({ activePage, setActivePage }: Props) {
           </nav>
           <div className="hidden md:block w-px h-6 bg-neutral-700"></div>
           {user ? (
-                      {user ? (
             <>
               <span className="text-xs text-neutral-400 mr-2">{user.email}</span>
               <button onClick={logout} className="text-sm font-medium text-neutral-300 hover:text-white">Logout</button>
