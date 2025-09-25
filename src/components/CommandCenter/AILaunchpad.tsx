@@ -26,10 +26,8 @@ export default function AILaunchpad({ initialSymbol, onAnalyze }: Props) {
   }, [initialSymbol]);
 
   const mutation = useMutation({
-    // This is the corrected line
-    mutationFn: (variables: { promptId: string; symbol: string }) => 
+    mutationFn: (variables: { promptId: string; symbol: string }) =>
       apiPost<{ content: string }>("openai", variables),
-    
     onSuccess: () => {
       onAnalyze(symbol);
     },
@@ -62,6 +60,12 @@ export default function AILaunchpad({ initialSymbol, onAnalyze }: Props) {
           </button>
         ))}
       </div>
+      {/* Show error if OpenAI call fails */}
+      {mutation.error && (
+        <div className="text-red-400 mt-2 text-sm">
+          Error: {mutation.error instanceof Error ? mutation.error.message : 'Something went wrong'}
+        </div>
+      )}
     </div>
   );
 }
