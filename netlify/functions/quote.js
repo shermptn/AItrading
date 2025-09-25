@@ -1,56 +1,23 @@
-export async function handler(event) {
+import type { Handler } from "@netlify/functions";
+
+export const handler: Handler = async (event) => {
   try {
-    const { symbol } = event.queryStringParameters || {};
-    if (!symbol) {
-      return { statusCode: 400, body: JSON.stringify({ error: "symbol required" }) };
-    }
+    const symbol = new URLSearchParams(event.queryStringParameters as any).get("symbol") || "SPY";
+    const key = process.env.TWELVE_DATA_KEY;
+    if (!key) throw new Error('TWELVE_DATA_KEY is not set');
 
-    const tdKey = process.env.TWELVE_DATA_KEY;
-    if (!tdKey) {
-      // Safe demo fallback
-      return {
-        statusCode: 200,
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          symbol: symbol.toUpperCase(),
-          price: 100,
-          high: 101,
-          low: 99,
-          volume: 0,
-          name: symbol.toUpperCase(),
-          change: 0,
-          changePercent: 0,
-          source: "⚠️ Local Fallback (stale)",
-          updated: new Date().toISOString()
-        })
-      };
-    }
+    const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(symbol)}&apikey=${key}`;
+    const res = await fetch(url);
+    const data = await res.json();
 
-    // Twelve Data proxy call
-    const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(tdKey)}`;
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(`TwelveData ${r.status}`);
-    const j = await r.json();
-    if (j.status === "error" || j.code) throw new Error(j.message || "Twelve Data error");
+    if (data.code >= 400) throw new Error(data.message);
 
-    const price = parseFloat(j.close ?? j.price);
-    const prev  = parseFloat(j.previous_close ?? j.open ?? price);
-
-    const payload = {
-      symbol: symbol.toUpperCase(),
-      name: j.name || symbol.toUpperCase(),
-      price,
-      high: +(j.high ?? price),
-      low: +(j.low ?? price),
-      volume: +(j.volume ?? 0),
-      change: price - prev,
-      changePercent: prev ? ((price - prev) / prev) * 100 : 0,
-      source: "Twelve Data",
-      updated: new Date().toISOString()
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
     };
-
-    return { statusCode: 200, headers: { "content-type": "application/json" }, body: JSON.stringify(payload) };
-  } catch (e) {
-    return { statusCode: 500, headers: { "content-type": "application/json" }, body: JSON.stringify({ error: String(e) }) };
+  } catch (e: any) {
+    return { statusCode: 500, body: JSON.stringify({ error: e.message }) };
   }
-}
+};
