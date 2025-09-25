@@ -1,10 +1,36 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiGet } from '../../api/client';
-import TickerSkeleton from '../common/TickerSkeleton'; // <-- Import
+import TickerSkeleton from '../common/TickerSkeleton';
 
-// ... (Keep the SYMBOLS constant and the Quote interface)
+const SYMBOLS = ['SPY', 'QQQ', 'DIA', 'AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOGL', 'META'];
 
-// ... (Keep the useWatchlistQuotes custom hook)
+interface Quote {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  percent_change: number; // Corrected to match Twelve Data's API response
+}
+
+// THIS IS THE MISSING FUNCTION
+function useWatchlistQuotes() {
+  return useQuery<Quote[]>({
+    queryKey: ['watchlistQuotes'],
+    queryFn: async () => {
+      const promises = SYMBOLS.map(symbol =>
+        apiGet<any>('quote', { symbol }).then(data => ({
+          symbol: data.symbol,
+          name: data.name,
+          price: parseFloat(data.price || data.close || '0'),
+          change: parseFloat(data.change || '0'),
+          percent_change: parseFloat(data.percent_change || '0'),
+        })).catch(e => ({ symbol, name: e.message, price: 0, change: 0, percent_change: 0 }))
+      );
+      return Promise.all(promises);
+    },
+    refetchInterval: 15000, // Refetch every 15 seconds
+  });
+}
 
 export default function Watchlist({ onSymbolSelect }: { onSymbolSelect: (symbol: string) => void }) {
   const { data, isLoading } = useWatchlistQuotes();
@@ -14,7 +40,7 @@ export default function Watchlist({ onSymbolSelect }: { onSymbolSelect: (symbol:
       <h2 className="text-lg font-semibold mb-3 text-white">Watchlist</h2>
       <div className="overflow-y-auto h-[480px]">
         {isLoading ? (
-          <TickerSkeleton /> // <-- Use skeleton when loading
+          <TickerSkeleton />
         ) : (
           <div className="space-y-2">
             {data?.map((quote) => (
@@ -30,7 +56,7 @@ export default function Watchlist({ onSymbolSelect }: { onSymbolSelect: (symbol:
                 <div className="text-right">
                   <p className="font-mono">{quote.price > 0 ? `$${quote.price.toFixed(2)}` : 'Error'}</p>
                   <p className={`text-xs ${quote.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {quote.change.toFixed(2)} ({quote.changePercent.toFixed(2)}%)
+                    {quote.change.toFixed(2)} ({quote.percent_change.toFixed(2)}%)
                   </p>
                 </div>
               </div>
