@@ -14,7 +14,9 @@ export default function CommandCenterPage() {
     setActiveSymbol(symbol); // Update the chart
     setDeepDiveSymbol(symbol); // Open the analysis modal
   };
-
+<div className="text-xs text-neutral-500 mb-2">
+  Click a ticker in the watchlist for instant analysis.
+</div>
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
