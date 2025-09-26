@@ -5,39 +5,51 @@ export default function Watchlist() {
 
   useEffect(() => {
     if (!container.current) return;
-    container.current.innerHTML = '';
+    // Clear safely
+    try {
+      container.current.innerHTML = '';
+    } catch (e) {
+      console.warn('Failed to clear watchlist container before injecting widget:', e);
+    }
+
     const script = document.createElement('script');
-    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-market-quotes.js";
-    script.type = "text/javascript";
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-market-quotes.js';
+    script.type = 'text/javascript';
     script.async = true;
-    script.innerHTML = JSON.stringify({
-      width: "100%",
+    script.textContent = JSON.stringify({
+      width: '100%',
       height: 500,
       symbolsGroups: [
         {
-          name: "US Stocks",
+          name: 'US Stocks',
           symbols: [
-            { name: "NASDAQ:AAPL", displayName: "AAPL" },
-            { name: "NASDAQ:MSFT", displayName: "MSFT" },
-            { name: "NASDAQ:GOOGL", displayName: "GOOGL" },
-            { name: "NASDAQ:AMZN", displayName: "AMZN" },
-            { name: "NASDAQ:META", displayName: "META" },
-            { name: "NASDAQ:NVDA", displayName: "NVDA" },
-            { name: "NASDAQ:TSLA", displayName: "TSLA" },
-            { name: "NASDAQ:QQQ", displayName: "QQQ" },
-            { name: "AMEX:SPY", displayName: "SPY" }
+            { name: 'NASDAQ:AAPL', displayName: 'AAPL' },
+            { name: 'NASDAQ:MSFT', displayName: 'MSFT' },
+            { name: 'NASDAQ:GOOGL', displayName: 'GOOGL' },
+            { name: 'NASDAQ:AMZN', displayName: 'AMZN' },
+            { name: 'NASDAQ:META', displayName: 'META' },
+            { name: 'NASDAQ:NVDA', displayName: 'NVDA' },
+            { name: 'NASDAQ:TSLA', displayName: 'TSLA' },
+            { name: 'NASDAQ:QQQ', displayName: 'QQQ' },
+            { name: 'AMEX:SPY', displayName: 'SPY' }
           ]
         }
       ],
       showSymbolLogo: true,
-      colorTheme: "dark",
+      colorTheme: 'dark',
       isTransparent: false,
-      locale: "en"
+      locale: 'en'
     });
     container.current.appendChild(script);
 
     return () => {
-      if (container.current) container.current.innerHTML = '';
+      if (container.current) {
+        try {
+          container.current.innerHTML = '';
+        } catch (e) {
+          console.warn('Failed to clear watchlist container on unmount:', e);
+        }
+      }
     };
   }, []);
 
