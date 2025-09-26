@@ -1,10 +1,16 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': '/src',
+    },
+  },
   build: {
-    target: 'esnext' // <-- Add this line to support top-level await!
-  }
-})
+    rollupOptions: {
+      external: ['react', 'react-dom'], // Add external dependencies here
+    },
+  },
+});
