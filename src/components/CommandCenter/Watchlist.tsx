@@ -1,16 +1,27 @@
 import { useEffect, useRef } from 'react';
 
 export default function Watchlist() {
-  const container = useRef<HTMLDivElement>(null);
+  const container = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!container.current) return;
-    // Clear safely
-    try {
-      container.current.innerHTML = '';
-    } catch (e) {
-      console.warn('Failed to clear watchlist container before injecting widget:', e);
-    }
+    const node = container.current;
+    if (!node) return;
+
+    // safe clear helper inline
+    const safeClear = (n: HTMLElement) => {
+      try {
+        while (n.firstChild) {
+          if (n.contains(n.firstChild)) n.removeChild(n.firstChild);
+          else break;
+        }
+      } catch {
+        try {
+          n.innerHTML = '';
+        } catch {}
+      }
+    };
+
+    safeClear(node);
 
     const script = document.createElement('script');
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-market-quotes.js';
@@ -40,16 +51,10 @@ export default function Watchlist() {
       isTransparent: false,
       locale: 'en'
     });
-    container.current.appendChild(script);
+    node.appendChild(script);
 
     return () => {
-      if (container.current) {
-        try {
-          container.current.innerHTML = '';
-        } catch (e) {
-          console.warn('Failed to clear watchlist container on unmount:', e);
-        }
-      }
+      if (node) safeClear(node);
     };
   }, []);
 
