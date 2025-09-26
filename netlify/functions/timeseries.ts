@@ -1,8 +1,6 @@
 import type { Handler } from '@netlify/functions';
 
 const API_BASE = 'https://api.twelvedata.com';
-
-// Simple in-memory cache (ephemeral, only while function instance is warm)
 type CacheEntry = { expiresAt: number; body: any };
 const cache = new Map<string, CacheEntry>();
 const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
@@ -10,9 +8,6 @@ const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
 export const handler: Handler = async (event) => {
   const { symbol = 'SPY', interval = '1day', limit = '250' } = event.queryStringParameters || {};
   const key = process.env.TWELVEDATA_API_KEY;
-
-  // Log presence for debugging (DO NOT LOG the key itself)
-  console.log('TWELVEDATA_API_KEY present:', !!key);
 
   if (!key) {
     return {
@@ -23,9 +18,9 @@ export const handler: Handler = async (event) => {
 
   const cacheKey = `${symbol}:${interval}:${limit}`;
   const now = Date.now();
-
-  // Serve from cache if available
   const cached = cache.get(cacheKey);
+
+  // Always serve from cache if available and not expired
   if (cached && cached.expiresAt > now) {
     return {
       statusCode: 200,
@@ -34,37 +29,46 @@ export const handler: Handler = async (event) => {
     };
   }
 
-  // Corrected URL construction (was malformed previously)
   const url = `${API_BASE}/time_series?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&outputsize=${encodeURIComponent(limit)}&format=json&apikey=${encodeURIComponent(key)}`;
 
   try {
     const resp = await fetch(url);
     const text = await resp.text();
+
+    // New: Check for quota error even in non-JSON or error responses
+    if (/run out of API credits|quota|exceeded/i.test(text)) {
+      if (cached && cached.body) {
+        return {
+          statusCode: 200,
+          headers: { 'Content-Type': 'application/json', 'x-cache': 'STALE' },
+          body: JSON.stringify(cached.body),
+        };
+      }
+      return {
+        statusCode: 429,
+        body: JSON.stringify({ error: 'quota_exceeded', message: 'API quota exceeded.' }),
+      };
+    }
+    
     let json: any;
     try {
       json = text ? JSON.parse(text) : {};
     } catch (parseErr) {
-      console.error('Failed to parse TwelveData response', parseErr);
+      console.error('Failed to parse TwelveData response', text);
+      // If parsing fails but we have a stale cache, use it
+      if (cached && cached.body) {
+        return {
+          statusCode: 200,
+          headers: { 'Content-Type': 'application/json', 'x-cache': 'STALE' },
+          body: JSON.stringify(cached.body),
+        };
+      }
       return { statusCode: 502, body: JSON.stringify({ error: 'invalid_response', message: 'Invalid response from data provider.' }) };
     }
 
-    // Provider error detection
+    // Provider error detection (for other errors)
     if (json && (json.status === 'error' || json.code)) {
       const message = json.message || JSON.stringify(json);
-      if (/run out of API credits|quota|exceeded/i.test(message)) {
-        // If we have cached body, return it as a stale fallback
-        if (cached && cached.body) {
-          return {
-            statusCode: 200,
-            headers: { 'Content-Type': 'application/json', 'x-cache': 'STALE' },
-            body: JSON.stringify(cached.body),
-          };
-        }
-        return {
-          statusCode: 429,
-          body: JSON.stringify({ error: 'quota_exceeded', message }),
-        };
-      }
       return {
         statusCode: 502,
         body: JSON.stringify({ error: 'provider_error', message }),
@@ -81,7 +85,7 @@ export const handler: Handler = async (event) => {
     };
   } catch (err) {
     console.error('Timeseries function error:', err);
-    // If fetch failed and cache exists, return cached
+    // If fetch failed and we have a stale cache, use it
     if (cached && cached.body) {
       return {
         statusCode: 200,
