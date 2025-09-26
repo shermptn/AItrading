@@ -1,15 +1,26 @@
 import { useEffect, useRef } from 'react';
 
 export default function TradingViewTicker() {
-  const container = useRef<HTMLDivElement>(null);
+  const container = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!container.current) return;
-    try {
-      container.current.innerHTML = '';
-    } catch (e) {
-      console.warn('Failed to clear tradingview ticker container:', e);
-    }
+    const node = container.current;
+    if (!node) return;
+
+    const safeClear = (n: HTMLElement) => {
+      try {
+        while (n.firstChild) {
+          if (n.contains(n.firstChild)) n.removeChild(n.firstChild);
+          else break;
+        }
+      } catch {
+        try {
+          n.innerHTML = '';
+        } catch {}
+      }
+    };
+
+    safeClear(node);
 
     const script = document.createElement('script');
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js';
@@ -33,16 +44,10 @@ export default function TradingViewTicker() {
       colorTheme: 'dark',
       locale: 'en'
     });
-    container.current.appendChild(script);
+    node.appendChild(script);
 
     return () => {
-      if (container.current) {
-        try {
-          container.current.innerHTML = '';
-        } catch (e) {
-          console.warn('Failed to clear tradingview ticker container on unmount:', e);
-        }
-      }
+      if (node) safeClear(node);
     };
   }, []);
 
