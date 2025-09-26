@@ -39,7 +39,6 @@ function transformData(raw: any[]): Bar[] {
 export default function MainChart({ symbol }: { symbol: string }) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const paneRef = useRef<any>(null);
   const seriesRef = useRef<any>(null);
   const { data, isLoading, error } = useCandleData(symbol);
 
@@ -50,7 +49,6 @@ export default function MainChart({ symbol }: { symbol: string }) {
     if (chartRef.current) {
       chartRef.current.remove();
       chartRef.current = null;
-      paneRef.current = null;
       seriesRef.current = null;
     }
 
@@ -78,10 +76,8 @@ export default function MainChart({ symbol }: { symbol: string }) {
     });
     chartRef.current = chart;
 
-    // Add a pane and candlestick series (v5+ API)
-    const pane = chart.addPane();
-    paneRef.current = pane;
-    const candleSeries = pane.addCandlestickSeries({
+    // Add candlestick series directly to the chart (v5 API)
+    const candleSeries = chart.addCandlestickSeries({
       upColor: '#16a34a',
       downColor: '#dc2626',
       borderUpColor: '#16a34a',
