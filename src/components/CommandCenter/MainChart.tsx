@@ -20,6 +20,7 @@ function useCandleData(symbol: string) {
       return res;
     },
     keepPreviousData: true,
+    retry: 1,
   });
 }
 
@@ -31,7 +32,7 @@ function transformData(raw: any[]): Bar[] {
       high: parseFloat(bar.high),
       low: parseFloat(bar.low),
       close: parseFloat(bar.close),
-      volume: parseFloat(bar.volume),
+      volume: parseFloat(bar.volume ?? 0),
     }))
     .reverse();
 }
@@ -47,65 +48,112 @@ export default function MainChart({ symbol }: { symbol: string }) {
 
     // Remove old chart if it exists
     if (chartRef.current) {
-      chartRef.current.remove();
+      try {
+        chartRef.current.remove();
+      } catch (e) {
+        console.warn('Error removing previous chart:', e);
+      }
       chartRef.current = null;
       seriesRef.current = null;
     }
 
     // Create new chart
-    const chart = createChart(chartContainerRef.current, {
-      width: chartContainerRef.current.clientWidth,
-      height: 500,
-      layout: {
-        background: { type: ColorType.Solid, color: '#171717' },
-        textColor: '#e5e5e5',
-      },
-      grid: {
-        vertLines: { color: '#222' },
-        horzLines: { color: '#222' },
-      },
-      rightPriceScale: {
-        borderColor: '#444',
-      },
-      timeScale: {
-        borderColor: '#444',
-      },
-      crosshair: {
-        mode: 0,
-      },
-    });
-    chartRef.current = chart;
+    let chart: IChartApi | null = null;
+    try {
+      chart = createChart(chartContainerRef.current, {
+        width: chartContainerRef.current.clientWidth,
+        height: 500,
+        layout: {
+          background: { type: ColorType.Solid, color: '#171717' },
+          textColor: '#e5e5e5',
+        },
+        grid: {
+          vertLines: { color: '#222' },
+          horzLines: { color: '#222' },
+        },
+        rightPriceScale: {
+          borderColor: '#444',
+        },
+        timeScale: {
+          borderColor: '#444',
+        },
+        crosshair: {
+          mode: 0,
+        },
+      });
+      chartRef.current = chart;
+    } catch (err) {
+      // If chart creation fails, show a helpful message in the container.
+      console.error('Failed to create chart:', err);
+      if (chartContainerRef.current) {
+        chartContainerRef.current.innerHTML =
+          '<div style="padding:18px;color:#f87171;text-align:center;">Chart failed to initialize.</div>';
+      }
+      return;
+    }
 
-    // THIS IS THE CORRECT CALL FOR v5+
-    const candleSeries = chart.addCandlestickSeries({
-      upColor: '#16a34a',
-      downColor: '#dc2626',
-      borderUpColor: '#16a34a',
-      borderDownColor: '#dc2626',
-      wickUpColor: '#16a34a',
-      wickDownColor: '#dc2626',
-    });
-    seriesRef.current = candleSeries;
+    // Create series safely: feature-detect addCandlestickSeries (some installs / versions may differ)
+    try {
+      const asAny = chart as any;
+      if (typeof asAny.addCandlestickSeries === 'function') {
+        const candleSeries = asAny.addCandlestickSeries({
+          upColor: '#16a34a',
+          downColor: '#dc2626',
+          borderUpColor: '#16a34a',
+          borderDownColor: '#dc2626',
+          wickUpColor: '#16a34a',
+          wickDownColor: '#dc2626',
+        });
+        seriesRef.current = candleSeries;
+      } else {
+        // Fallback to a line series (prevents runtime crash and still shows price)
+        console.warn('addCandlestickSeries not available on chart instance; falling back to line series.');
+        if (typeof asAny.addLineSeries === 'function') {
+          seriesRef.current = asAny.addLineSeries();
+        } else {
+          // last-resort: do nothing and display a friendly notice
+          chartContainerRef.current!.innerHTML =
+            '<div style="padding:18px;color:#fbbf24;text-align:center;">Chart type not supported in this build. Please update the chart library.</div>';
+        }
+      }
+    } catch (err) {
+      console.error('Error creating series:', err);
+    }
 
     // Responsive chart
     const handleResize = () => {
-      if (chartContainerRef.current) {
-        chart.resize(chartContainerRef.current.clientWidth, 500);
+      if (chartContainerRef.current && chartRef.current) {
+        chartRef.current.resize(chartContainerRef.current.clientWidth, 500);
       }
     };
     window.addEventListener('resize', handleResize);
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      chart.remove();
+      try {
+        chart?.remove();
+      } catch (e) {
+        // ignore
+      }
     };
   }, [symbol]);
 
   // Set data whenever it changes
   useEffect(() => {
     if (seriesRef.current && data?.values) {
-      const bars = transformData(data.values);
-      seriesRef.current.setData(bars);
+      try {
+        const bars = transformData(data.values);
+        if (typeof seriesRef.current.setData === 'function') {
+          seriesRef.current.setData(bars);
+        } else if (typeof seriesRef.current.update === 'function') {
+          // attempt best-effort update if an older API is present
+          bars.forEach((b) => seriesRef.current.update(b));
+        } else {
+          console.warn('Series does not support setData/update.');
+        }
+      } catch (err) {
+        console.error('Failed to set chart data:', err);
+      }
     }
   }, [data]);
 
