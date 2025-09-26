@@ -13,6 +13,9 @@ interface AuthContextType {
   login: () => void;
   logout: () => void;
   isPro: boolean;
+  isLoading: boolean;
+  error: string | null;
+  clearError: () => void;
 }
 
 // Create the context
@@ -21,43 +24,128 @@ const AuthContext = createContext<AuthContextType | null>(null);
 // Create the AuthProvider component
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const clearError = () => setError(null);
 
   useEffect(() => {
-    // Initialize the Netlify Identity widget
-    netlifyIdentity.init();
-    
-    // Set the initial user if already logged in
-    const currentUser = netlifyIdentity.currentUser();
-    if (currentUser) {
-      setUser(currentUser as User);
-    }
+    let mounted = true;
 
-    // Listen for login events
-    netlifyIdentity.on('login', (loggedInUser) => {
-      setUser(loggedInUser as User);
-      netlifyIdentity.close();
-    });
+    const initializeAuth = async () => {
+      try {
+        // Initialize the Netlify Identity widget with error handling
+        netlifyIdentity.init({
+          container: null, // Don't auto-inject modal
+        });
+        
+        // Set the initial user if already logged in
+        const currentUser = netlifyIdentity.currentUser();
+        if (mounted && currentUser) {
+          setUser(currentUser as User);
+        }
 
-    // Listen for logout events
-    netlifyIdentity.on('logout', () => {
-      setUser(null);
-    });
+        // Listen for login events
+        const handleLogin = (loggedInUser: any) => {
+          if (!mounted) return;
+          setUser(loggedInUser as User);
+          setError(null);
+          netlifyIdentity.close();
+        };
 
-    // Clean up listeners on component unmount
+        // Listen for logout events
+        const handleLogout = () => {
+          if (!mounted) return;
+          setUser(null);
+          setError(null);
+        };
+
+        // Listen for error events
+        const handleError = (err: any) => {
+          if (!mounted) return;
+          console.error('Netlify Identity error:', err);
+          setError(err.message || 'Authentication error occurred');
+        };
+
+        // Listen for init events
+        const handleInit = (user: any) => {
+          if (!mounted) return;
+          if (user) {
+            setUser(user as User);
+          }
+          setIsLoading(false);
+        };
+
+        netlifyIdentity.on('login', handleLogin);
+        netlifyIdentity.on('logout', handleLogout);
+        netlifyIdentity.on('error', handleError);
+        netlifyIdentity.on('init', handleInit);
+
+        // If no init event is fired, stop loading after a timeout
+        const timeoutId = setTimeout(() => {
+          if (mounted) {
+            setIsLoading(false);
+          }
+        }, 3000);
+
+        // Clean up listeners on component unmount
+        return () => {
+          mounted = false;
+          clearTimeout(timeoutId);
+          netlifyIdentity.off('login', handleLogin);
+          netlifyIdentity.off('logout', handleLogout);
+          netlifyIdentity.off('error', handleError);
+          netlifyIdentity.off('init', handleInit);
+        };
+      } catch (err) {
+        if (mounted) {
+          console.error('Failed to initialize Netlify Identity:', err);
+          setError(err instanceof Error ? err.message : 'Failed to initialize authentication');
+          setIsLoading(false);
+        }
+      }
+    };
+
+    initializeAuth();
+
     return () => {
-      netlifyIdentity.off('login');
-      netlifyIdentity.off('logout');
+      mounted = false;
     };
   }, []);
 
-  const login = () => netlifyIdentity.open('login');
-  const logout = () => netlifyIdentity.logout();
+  const login = () => {
+    try {
+      clearError();
+      netlifyIdentity.open('login');
+    } catch (err) {
+      console.error('Failed to open login modal:', err);
+      setError('Failed to open login. Please refresh the page and try again.');
+    }
+  };
+
+  const logout = () => {
+    try {
+      clearError();
+      netlifyIdentity.logout();
+    } catch (err) {
+      console.error('Failed to logout:', err);
+      setError('Failed to logout. Please refresh the page and try again.');
+    }
+  };
 
   // A helper to determine if the user has the 'pro' role
   const isPro = user?.app_metadata?.roles?.includes('pro') ?? false;
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isPro }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      logout, 
+      isPro, 
+      isLoading, 
+      error, 
+      clearError 
+    }}>
       {children}
     </AuthContext.Provider>
   );
