@@ -7,7 +7,7 @@ interface Props {
 /**
  * TVWidgetsLoader
  * Renders TradingView ticker tape, advanced chart, and market overview widgets.
- * If a widget is blocked by an adblocker, shows a fallback message.
+ * If a widget is blocked by an adblocker, shows a fallback message and a retry button.
  */
 export default function TVWidgetsLoader({ initialSymbol }: Props) {
   const containers = {
@@ -16,7 +16,7 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
     overview: useRef<HTMLDivElement>(null),
   };
 
-  // Helper to inject and fallback
+  // Helper to inject and fallback with robust waiting for the iframe
   function injectWidget(container: HTMLDivElement, src: string, config: any) {
     container.innerHTML = '';
     const widget = document.createElement('div');
@@ -27,12 +27,24 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
     script.src = src;
     script.type = 'text/javascript';
     script.async = true;
-    script.innerHTML = JSON.stringify(config);
+    // TradingView expects the configuration JSON inside the script tag
+    script.textContent = JSON.stringify(config);
     container.appendChild(script);
 
-    setTimeout(() => {
-      const hasWidget = !!container.querySelector('iframe');
-      if (!hasWidget) {
+    // Wait for iframe to appear and for contentWindow to be available (some browsers or blockers delay this).
+    const maxAttempts = 6;
+    let attempt = 0;
+    const interval = 700;
+
+    const checkReady = () => {
+      attempt += 1;
+      const iframe = container.querySelector('iframe') as HTMLIFrameElement | null;
+      if (iframe && iframe.contentWindow) {
+        // widget loaded successfully
+        return;
+      }
+      if (attempt >= maxAttempts) {
+        // assume widget blocked or failed
         container.innerHTML = `
           <div style="padding:18px;text-align:center;color:#fbbf24;">
             <strong>TradingView widget failed to load.</strong><br/>
@@ -42,8 +54,14 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
         `;
         const btn = container.querySelector('#tv-retry-btn');
         if (btn) btn.addEventListener('click', () => injectWidget(container, src, config));
+        return;
       }
-    }, 2500);
+      // keep waiting
+      setTimeout(checkReady, interval);
+    };
+
+    // Start checking after a small delay to give the external script time to create an iframe
+    setTimeout(checkReady, 500);
   }
 
   useEffect(() => {
