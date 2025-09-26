@@ -1,80 +1,31 @@
-import React, { useEffect, useRef, memo } from 'react';
+import React, { useRef } from 'react';
+import { useTradingViewWidget } from '../../hooks/useTradingViewWidget';
+
+const widgetConfig = {
+  "symbols": [
+    {"proName": "FOREXCOM:SPXUSD", "title": "S&P 500"},
+    {"proName": "FOREXCOM:NSXUSD", "title": "US 100"},
+    {"proName": "BITSTAMP:BTCUSD", "title": "Bitcoin"},
+    {"proName": "BITSTAMP:ETHUSD", "title": "Ethereum"},
+    {"proName": "NASDAQ:TSLA", "title": "Tesla"},
+    {"proName": "NASDAQ:META", "title": "Meta"},
+    {"proName": "NASDAQ:MSFT", "title": "Microsoft"},
+    {"proName": "OANDA:XAUUSD", "title": "Gold"},
+    {"proName": "NASDAQ:NVDA", "title": "NVIDIA"},
+    {"proName": "NASDAQ:AAPL", "title": "Apple"}
+  ],
+  "colorTheme": "dark", "locale": "en", "isTransparent": false, "showSymbolLogo": true, "displayMode": "adaptive"
+};
 
 function TickerTapeWidget() {
-  const container = useRef();
+  const containerRef = useRef<HTMLDivElement>(null);
+  useTradingViewWidget({
+    widgetScriptSrc: "https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js",
+    widgetConfig,
+    containerRef
+  });
 
-  useEffect(
-    () => {
-      const script = document.createElement("script");
-      script.src = "https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js";
-      script.type = "text/javascript";
-      script.async = true;
-      script.innerHTML = `
-        {
-          "symbols": [
-            {
-              "proName": "FOREXCOM:SPXUSD",
-              "title": "S&P 500 Index"
-            },
-            {
-              "proName": "FOREXCOM:NSXUSD",
-              "title": "US 100 Cash CFD"
-            },
-            {
-              "proName": "BITSTAMP:BTCUSD",
-              "title": "Bitcoin"
-            },
-            {
-              "proName": "BITSTAMP:ETHUSD",
-              "title": "Ethereum"
-            },
-            {
-              "proName": "NASDAQ:TSLA",
-              "title": "TSLA"
-            },
-            {
-              "proName": "NASDAQ:META",
-              "title": "META"
-            },
-            {
-              "proName": "NASDAQ:MSFT",
-              "title": "MSFT"
-            },
-            {
-              "proName": "NASDAQ:NDX",
-              "title": "NDX"
-            },
-            {
-              "proName": "OANDA:XAUUSD",
-              "title": "GOLD"
-            },
-            {
-              "proName": "NASDAQ:NVDA",
-              "title": "NVIDIA"
-            },
-            {
-              "proName": "NASDAQ:AAPL",
-              "title": "AAPL"
-            }
-          ],
-          "colorTheme": "dark",
-          "locale": "en",
-          "largeChartUrl": "",
-          "isTransparent": false,
-          "showSymbolLogo": true,
-          "displayMode": "adaptive"
-        }`;
-      container.current.appendChild(script);
-    },
-    []
-  );
-
-  return (
-    <div className="tradingview-widget-container" ref={container}>
-      <div className="tradingview-widget-container__widget"></div>
-      <div className="tradingview-widget-copyright"><a href="https://www.tradingview.com/markets/" rel="noopener nofollow" target="_blank"><span className="blue-text">Ticker tape</span></a><span className="trademark"> by TradingView</span></div>
-    </div>
-  );
+  return <div className="tradingview-widget-container" ref={containerRef} style={{ height: "72px", width: "100%" }}></div>;
 }
 
-export default memo(TickerTapeWidget);
+export default React.memo(TickerTapeWidget);
