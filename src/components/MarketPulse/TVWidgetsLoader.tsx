@@ -6,11 +6,13 @@ interface Props {
 
 /**
  * TVWidgetsLoader
- * Robust TradingView widget embed with polling, retry UI, and safe cleanup.
+ * Renders TradingView advanced chart and market overview widgets inside Market Pulse.
+ * The ticker was removed from here so it can be rendered once (for example in the header).
+ * This loader keeps a retry UI and robust iframe polling/cleanup.
  */
 export default function TVWidgetsLoader({ initialSymbol }: Props) {
   const containers = {
-    ticker: useRef<HTMLDivElement | null>(null),
+    // ticker removed to avoid duplicate ticker on the page
     advancedChart: useRef<HTMLDivElement | null>(null),
     overview: useRef<HTMLDivElement | null>(null),
   };
@@ -22,7 +24,6 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
           if (node.contains(node.firstChild)) node.removeChild(node.firstChild);
           else break;
         } catch {
-          // if a child was already removed by third-party script, break
           break;
         }
       }
@@ -91,31 +92,7 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
   }
 
   useEffect(() => {
-    if (containers.ticker.current) {
-      injectWidget(
-        containers.ticker.current,
-        'https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js',
-        {
-          symbols: [
-            { proName: 'NASDAQ:AAPL', title: 'AAPL' },
-            { proName: 'NASDAQ:MSFT', title: 'MSFT' },
-            { proName: 'NASDAQ:GOOGL', title: 'GOOGL' },
-            { proName: 'NASDAQ:AMZN', title: 'AMZN' },
-            { proName: 'NASDAQ:META', title: 'META' },
-            { proName: 'NASDAQ:NVDA', title: 'NVDA' },
-            { proName: 'NASDAQ:TSLA', title: 'TSLA' },
-            { proName: 'NASDAQ:QQQ', title: 'QQQ' },
-            { proName: 'AMEX:SPY', title: 'SPY' }
-          ],
-          showSymbolLogo: true,
-          isTransparent: true,
-          displayMode: 'adaptive',
-          colorTheme: 'dark',
-          locale: 'en'
-        }
-      );
-    }
-
+    // Advanced chart: ensure it uses full width and a larger height so it isn't tiny.
     if (containers.advancedChart.current) {
       injectWidget(
         containers.advancedChart.current,
@@ -123,11 +100,14 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
         {
           symbol: initialSymbol,
           colorTheme: 'dark',
-          autosize: true,
+          autosize: false,    // use explicit width/height to force size
+          width: "100%",
+          height: 500,
         }
       );
     }
 
+    // Overview: larger and full width
     if (containers.overview.current) {
       injectWidget(
         containers.overview.current,
@@ -175,9 +155,8 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
 
   return (
     <div className="space-y-6">
-      <div ref={containers.ticker} />
-      <div ref={containers.advancedChart} />
-      <div ref={containers.overview} />
+      <div ref={containers.advancedChart} className="w-full" />
+      <div ref={containers.overview} className="w-full" />
     </div>
   );
 }
