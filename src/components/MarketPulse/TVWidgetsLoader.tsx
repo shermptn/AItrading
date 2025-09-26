@@ -18,7 +18,13 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
 
   // Helper to inject and fallback with robust waiting for the iframe
   function injectWidget(container: HTMLDivElement, src: string, config: any) {
-    container.innerHTML = '';
+    // Clear and prepare container
+    try {
+      container.innerHTML = '';
+    } catch (e) {
+      console.warn('Failed to clear container before injecting widget:', e);
+    }
+
     const widget = document.createElement('div');
     widget.className = 'tradingview-widget-container__widget';
     container.appendChild(widget);
@@ -45,15 +51,19 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
       }
       if (attempt >= maxAttempts) {
         // assume widget blocked or failed
-        container.innerHTML = `
-          <div style="padding:18px;text-align:center;color:#fbbf24;">
-            <strong>TradingView widget failed to load.</strong><br/>
-            If you use an adblocker or privacy browser, allow scripts from <b>s3.tradingview.com</b> and refresh.<br/>
-            <button id="tv-retry-btn" style="margin-top:10px;padding:6px 14px;background:#fde68a;color:#222;border-radius:6px;border:none;cursor:pointer;">Retry</button>
-          </div>
-        `;
-        const btn = container.querySelector('#tv-retry-btn');
-        if (btn) btn.addEventListener('click', () => injectWidget(container, src, config));
+        try {
+          container.innerHTML = `
+            <div style="padding:18px;text-align:center;color:#fbbf24;">
+              <strong>TradingView widget failed to load.</strong><br/>
+              If you use an adblocker or privacy browser, allow scripts from <b>s3.tradingview.com</b> and refresh.<br/>
+              <button id="tv-retry-btn" style="margin-top:10px;padding:6px 14px;background:#fde68a;color:#222;border-radius:6px;border:none;cursor:pointer;">Retry</button>
+            </div>
+          `;
+          const btn = container.querySelector('#tv-retry-btn');
+          if (btn) btn.addEventListener('click', () => injectWidget(container, src, config));
+        } catch (e) {
+          console.warn('Failed to render TradingView fallback UI:', e);
+        }
         return;
       }
       // keep waiting
@@ -137,7 +147,16 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
     }
 
     return () => {
-      Object.values(containers).forEach(ref => { if (ref.current) ref.current.innerHTML = ''; });
+      // robust cleanup
+      Object.values(containers).forEach(ref => {
+        if (ref.current) {
+          try {
+            ref.current.innerHTML = '';
+          } catch (e) {
+            console.warn('Failed to clear widget container during cleanup:', e);
+          }
+        }
+      });
     };
   }, [initialSymbol]);
 
