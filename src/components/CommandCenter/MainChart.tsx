@@ -16,7 +16,6 @@ function useCandleData(symbol: string) {
   return useQuery<{ values: any[] }, Error>({
     queryKey: ['timeseries', symbol],
     queryFn: async () => {
-      // Fetch 250 daily bars for the symbol
       const res = await apiGet<any>('timeseries', { symbol, interval: '1day', limit: '250' });
       return res;
     },
@@ -34,22 +33,28 @@ function transformData(raw: any[]): Bar[] {
       close: parseFloat(bar.close),
       volume: parseFloat(bar.volume),
     }))
-    .reverse(); // Twelve Data is newest first, chart wants oldest first
+    .reverse();
 }
 
 export default function MainChart({ symbol }: { symbol: string }) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const paneRef = useRef<any>(null);
+  const seriesRef = useRef<any>(null);
   const { data, isLoading, error } = useCandleData(symbol);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    // Set up chart
+    // Remove old chart if it exists
     if (chartRef.current) {
       chartRef.current.remove();
       chartRef.current = null;
+      paneRef.current = null;
+      seriesRef.current = null;
     }
+
+    // Create new chart
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
       height: 500,
@@ -73,7 +78,10 @@ export default function MainChart({ symbol }: { symbol: string }) {
     });
     chartRef.current = chart;
 
-    const candleSeries = chart.addCandlestickSeries({
+    // Add a pane and candlestick series (v5+ API)
+    const pane = chart.addPane();
+    paneRef.current = pane;
+    const candleSeries = pane.addCandlestickSeries({
       upColor: '#16a34a',
       downColor: '#dc2626',
       borderUpColor: '#16a34a',
@@ -81,6 +89,7 @@ export default function MainChart({ symbol }: { symbol: string }) {
       wickUpColor: '#16a34a',
       wickDownColor: '#dc2626',
     });
+    seriesRef.current = candleSeries;
 
     // Responsive chart
     const handleResize = () => {
@@ -98,13 +107,9 @@ export default function MainChart({ symbol }: { symbol: string }) {
 
   // Set data whenever it changes
   useEffect(() => {
-    if (!chartRef.current) return;
-    if (data?.values) {
+    if (seriesRef.current && data?.values) {
       const bars = transformData(data.values);
-      const candleSeries = chartRef.current.getSeries()![0] as any;
-      if (candleSeries) {
-        candleSeries.setData(bars);
-      }
+      seriesRef.current.setData(bars);
     }
   }, [data]);
 
