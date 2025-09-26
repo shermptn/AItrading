@@ -76,7 +76,7 @@ export default function MainChart({ symbol }: { symbol: string }) {
     });
     chartRef.current = chart;
 
-    // Add candlestick series directly to the chart (v5 API)
+    // THIS IS THE CORRECT CALL FOR v5+
     const candleSeries = chart.addCandlestickSeries({
       upColor: '#16a34a',
       downColor: '#dc2626',
