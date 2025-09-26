@@ -15,12 +15,10 @@ export function useTradingViewWidget({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Ensure the container is available
     if (!containerRef.current) {
       return;
     }
 
-    // Clear the container on re-render to avoid duplicating widgets
     containerRef.current.innerHTML = '';
     setIsLoading(true);
     setError(null);
@@ -37,27 +35,25 @@ export function useTradingViewWidget({
 
     script.onerror = () => {
       setIsLoading(false);
-      setError('Failed to load the TradingView widget script. Please check your network or ad-blocker settings.');
+      setError('Failed to load the TradingView widget script.');
     };
 
     containerRef.current.appendChild(script);
 
-    // Set a timeout to catch cases where the script loads but the widget doesn't render
     const timeoutId = setTimeout(() => {
       if (isLoading) {
         setError('Widget loading timed out.');
         setIsLoading(false);
       }
-    }, 15000); // 15-second timeout
+    }, 15000);
 
-    // Cleanup function to remove the script and clear timeout
     return () => {
       clearTimeout(timeoutId);
       if (containerRef.current) {
         containerRef.current.innerHTML = '';
       }
     };
-  }, [widgetScriptSrc, JSON.stringify(widgetConfig), containerRef]); // Re-run if config changes
+  }, [widgetScriptSrc, JSON.stringify(widgetConfig), containerRef]);
 
   return { isLoading, error };
 }
