@@ -13,7 +13,11 @@
     "@stripe/stripe-js": "^4.1.0",
     "@tanstack/react-query": "^5.51.1",
     "clsx": "^2.1.1",
+<<<<<<< HEAD
     "lightweight-charts": "^5.0.8",
+=======
+    "lightweight-charts": "^4.2.0",
+>>>>>>> 411574d1ec7193d17b3bfaf32d08f42adaeef4c7
     "netlify-identity-widget": "^1.9.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

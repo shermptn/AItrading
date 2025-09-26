@@ -3,37 +3,38 @@ import { useMutation } from '@tanstack/react-query';
 import { apiPost } from '../../api/client';
 
 const templates = [
-  { id: 'market-conditions', label: 'Market Conditions', make: (s: string) => `Analyze current market conditions for ${s}. Include trend, key support/resistance levels, and immediate risk factors. Format as markdown.` },
-  { id: 'trade-logic', label: 'Trade Logic', make: (s: string) => `Propose a short-term trade idea for ${s}. Include a clear entry price, stop-loss, and two profit targets. Justify the logic briefly. Format as markdown.` },
-  // ... add other templates if you wish
+  { id: 'market-conditions', label: 'Market Conditions' },
+  { id: 'position-logic', label: 'Trade Logic' },
+  { id: 'news-impact', label: 'News Impact' },
+  { id: 'technical-summary', label: 'Technical Summary' },
+  { id: 'sentiment-analysis', label: 'Sentiment Analysis' },
+  { id: 'correlation-analysis', label: 'Correlation Matrix' },
+  { id: 'volatility-forecast', label: 'Volatility Forecast' },
+  { id: 'earnings-prep', label: 'Earnings Prep' },
 ];
 
 interface Props {
   initialSymbol: string;
-  onAnalyze: (symbol: string) => void; // <-- New prop to trigger the modal
+  onAnalyze: (symbol: string) => void;
 }
 
 export default function AILaunchpad({ initialSymbol, onAnalyze }: Props) {
   const [symbol, setSymbol] = useState(initialSymbol);
 
-  // When the chart symbol changes, update the launchpad's symbol
   useEffect(() => {
     setSymbol(initialSymbol);
   }, [initialSymbol]);
 
   const mutation = useMutation({
-    mutationFn: (prompt: string) => apiPost<{ content: string }>("openai", { prompt }),
+    mutationFn: (variables: { promptId: string; symbol: string }) =>
+      apiPost<{ content: string }>("openai", variables),
     onSuccess: () => {
-      onAnalyze(symbol); // <-- Trigger the modal on success
+      onAnalyze(symbol);
     },
   });
 
-  const runAnalysis = (id: string) => {
-    const template = templates.find(t => t.id === id);
-    if (template) {
-      const prompt = template.make(symbol);
-      mutation.mutate(prompt);
-    }
+  const runAnalysis = (promptId: string) => {
+    mutation.mutate({ promptId, symbol });
   };
 
   return (
@@ -59,6 +60,12 @@ export default function AILaunchpad({ initialSymbol, onAnalyze }: Props) {
           </button>
         ))}
       </div>
+      {/* Show error if OpenAI call fails */}
+      {mutation.error && (
+        <div className="text-red-400 mt-2 text-sm">
+          Error: {mutation.error instanceof Error ? mutation.error.message : 'Something went wrong'}
+        </div>
+      )}
     </div>
   );
 }

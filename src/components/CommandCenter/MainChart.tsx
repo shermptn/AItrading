@@ -1,44 +1,124 @@
 import { useEffect, useRef } from 'react';
+import { createChart, ColorType, IChartApi, UTCTimestamp } from 'lightweight-charts';
+import { useQuery } from '@tanstack/react-query';
+import { apiGet } from '../../api/client';
 
-// Make TradingView available on the window object
-declare global {
-  interface Window {
-    TradingView: any;
-  }
+interface Bar {
+  time: UTCTimestamp;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+function useCandleData(symbol: string) {
+  return useQuery<{ values: any[] }, Error>({
+    queryKey: ['timeseries', symbol],
+    queryFn: async () => {
+      // Fetch 250 daily bars for the symbol
+      const res = await apiGet<any>('timeseries', { symbol, interval: '1day', limit: '250' });
+      return res;
+    },
+    keepPreviousData: true,
+  });
+}
+
+function transformData(raw: any[]): Bar[] {
+  return raw
+    .map((bar) => ({
+      time: Math.floor(new Date(bar.datetime).getTime() / 1000) as UTCTimestamp,
+      open: parseFloat(bar.open),
+      high: parseFloat(bar.high),
+      low: parseFloat(bar.low),
+      close: parseFloat(bar.close),
+      volume: parseFloat(bar.volume),
+    }))
+    .reverse(); // Twelve Data is newest first, chart wants oldest first
 }
 
 export default function MainChart({ symbol }: { symbol: string }) {
-  const container = useRef<HTMLDivElement>(null);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const { data, isLoading, error } = useCandleData(symbol);
 
   useEffect(() => {
-    const initChart = () => {
-      if (!container.current || !window.TradingView) return;
-      container.current.innerHTML = "";
-      new window.TradingView.widget({
-        symbol: symbol,
-        interval: "60", // 1 hour
-        container: container.current,
-        autosize: true,
-        theme: "dark",
-        style: "1",
-        timezone: "Etc/UTC",
-        toolbar_bg: "#1e293b",
-        withdateranges: true,
-        allow_symbol_change: false,
-        hide_side_toolbar: false,
-      });
-    };
+    if (!chartContainerRef.current) return;
 
-    if (!window.TradingView) {
-      const script = document.createElement("script");
-      script.src = "https://s3.tradingview.com/tv.js";
-      script.async = true;
-      script.onload = initChart;
-      document.body.appendChild(script);
-    } else {
-      initChart();
+    // Set up chart
+    if (chartRef.current) {
+      chartRef.current.remove();
+      chartRef.current = null;
     }
+    const chart = createChart(chartContainerRef.current, {
+      width: chartContainerRef.current.clientWidth,
+      height: 500,
+      layout: {
+        background: { type: ColorType.Solid, color: '#171717' },
+        textColor: '#e5e5e5',
+      },
+      grid: {
+        vertLines: { color: '#222' },
+        horzLines: { color: '#222' },
+      },
+      rightPriceScale: {
+        borderColor: '#444',
+      },
+      timeScale: {
+        borderColor: '#444',
+      },
+      crosshair: {
+        mode: 0,
+      },
+    });
+    chartRef.current = chart;
+
+    const candleSeries = chart.addCandlestickSeries({
+      upColor: '#16a34a',
+      downColor: '#dc2626',
+      borderUpColor: '#16a34a',
+      borderDownColor: '#dc2626',
+      wickUpColor: '#16a34a',
+      wickDownColor: '#dc2626',
+    });
+
+    // Responsive chart
+    const handleResize = () => {
+      if (chartContainerRef.current) {
+        chart.resize(chartContainerRef.current.clientWidth, 500);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chart.remove();
+    };
   }, [symbol]);
 
-  return <div className="h-[520px] w-full rounded-xl overflow-hidden bg-neutral-900" ref={container} />;
+  // Set data whenever it changes
+  useEffect(() => {
+    if (!chartRef.current) return;
+    if (data?.values) {
+      const bars = transformData(data.values);
+      const candleSeries = chartRef.current.getSeries()![0] as any;
+      if (candleSeries) {
+        candleSeries.setData(bars);
+      }
+    }
+  }, [data]);
+
+  return (
+    <div
+      ref={chartContainerRef}
+      className="h-[520px] w-full rounded-xl overflow-hidden bg-neutral-900"
+      style={{ minHeight: 400, minWidth: 320 }}
+    >
+      {isLoading && <div className="text-center text-neutral-400 pt-40">Loading chart...</div>}
+      {error && <div className="text-red-400 text-center pt-40">Failed to load chart: {error.message}</div>}
+      {!isLoading && !error && (!data?.values || data.values.length === 0) && (
+        <div className="text-neutral-400 text-center pt-40">No chart data available.</div>
+      )}
+    </div>
+  );
 }
