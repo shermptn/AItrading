@@ -1,22 +1,32 @@
 import { useEffect, useRef } from 'react';
 
 export default function TradingViewTicker() {
-  const container = useRef<HTMLDivElement>(null);
+  const container = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!container.current) return;
-    
-    // Clear any existing content
-    container.current.innerHTML = '';
-    
-    // Create the widget script
+    const node = container.current;
+    if (!node) return;
+
+    const safeClear = (n: HTMLElement) => {
+      try {
+        while (n.firstChild) {
+          if (n.contains(n.firstChild)) n.removeChild(n.firstChild);
+          else break;
+        }
+      } catch {
+        try {
+          n.innerHTML = '';
+        } catch {}
+      }
+    };
+
+    safeClear(node);
+
     const script = document.createElement('script');
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js';
     script.type = 'text/javascript';
     script.async = true;
-    
-    // Configure the widget
-    script.innerHTML = JSON.stringify({
+    script.textContent = JSON.stringify({
       symbols: [
         { proName: 'NASDAQ:AAPL', title: 'AAPL' },
         { proName: 'NASDAQ:MSFT', title: 'MSFT' },
@@ -34,15 +44,10 @@ export default function TradingViewTicker() {
       colorTheme: 'dark',
       locale: 'en'
     });
+    node.appendChild(script);
 
-    // Add the script to the container
-    container.current.appendChild(script);
-
-    // Cleanup on unmount
     return () => {
-      if (container.current) {
-        container.current.innerHTML = '';
-      }
+      if (node) safeClear(node);
     };
   }, []);
 

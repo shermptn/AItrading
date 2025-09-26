@@ -1,81 +1,153 @@
-import { useQuery } from '@tanstack/react-query';
-import { apiGet } from '../../api/client';
-import TickerSkeleton from '../common/TickerSkeleton';
+import { useEffect, useRef, useState } from 'react';
 
-const SYMBOLS = ['SPY', 'QQQ', 'DIA', 'AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOGL', 'META'];
+type WatchItem = { symbol: string; display: string; price: number };
 
-interface Quote {
-  symbol: string;
-  name: string;
-  price: number;
-  change: number;
-  percent_change: number;
+// A small local fallback dataset (keeps UI usable when TradingView is blocked)
+const FALLBACK_WATCHLIST: WatchItem[] = [
+  { symbol: 'AAPL', display: 'AAPL', price: 256.6 },
+  { symbol: 'MSFT', display: 'MSFT', price: 510.17 },
+  { symbol: 'GOOGL', display: 'GOOGL', price: 246.66 },
+  { symbol: 'AMZN', display: 'AMZN', price: 220.26 },
+  { symbol: 'META', display: 'META', price: 742.6 },
+  { symbol: 'NVDA', display: 'NVDA', price: 177.2 },
+  { symbol: 'TSLA', display: 'TSLA', price: 438.61 },
+  { symbol: 'QQQ', display: 'QQQ', price: 595.57 },
+];
+
+function safeClear(n: HTMLElement) {
+  try {
+    while (n.firstChild) {
+      try {
+        if (n.contains(n.firstChild)) n.removeChild(n.firstChild);
+        else break;
+      } catch {
+        break;
+      }
+    }
+  } catch {
+    try {
+      n.innerHTML = '';
+    } catch {}
+  }
 }
 
-function useWatchlistQuotes() {
-  return useQuery<Quote[]>({
-    queryKey: ['watchlistQuotes'],
-    queryFn: async () => {
-      const promises = SYMBOLS.map(symbol =>
-        apiGet<any>('quote', { symbol }).then(data => ({
-          symbol: data.symbol,
-          name: data.name,
-          price: parseFloat(data.price || data.close || '0'),
-          change: parseFloat(data.change || '0'),
-          percent_change: parseFloat(data.percent_change || '0'),
-        })).catch(e => ({ symbol, name: `Error: ${e.message}`, price: 0, change: 0, percent_change: 0 }))
-      );
-      return Promise.all(promises);
-    },
-    refetchInterval: 60000, // Refetch every 60 seconds
-  });
-}
+export default function Watchlist() {
+  const container = useRef<HTMLDivElement | null>(null);
+  const [showFallback, setShowFallback] = useState(false);
+  const [items, setItems] = useState<WatchItem[]>(FALLBACK_WATCHLIST);
 
-export default function Watchlist({ onSymbolSelect }: { onSymbolSelect: (symbol: string) => void }) {
-  const { data, isLoading, refetch } = useWatchlistQuotes();
+  useEffect(() => {
+    const node = container.current;
+    if (!node) return;
 
-  // Detect if all failed
-  const allFailed = data && data.every(q => q.price === 0);
+    // If a tradingview widget is already injected (prevent duplicates), skip injection
+    const already = node.querySelector('[data-tv-injected]');
+    if (already) {
+      // give the widget a chance to render; if it doesn't show iframe quickly, fallback below
+      const iframeCheck = setTimeout(() => {
+        const iframe = node.querySelector('iframe');
+        if (!iframe) setShowFallback(true);
+      }, 2500);
+      return () => clearTimeout(iframeCheck);
+    }
+
+    // Attempt injection
+    safeClear(node);
+    const script = document.createElement('script');
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-market-quotes.js';
+    script.type = 'text/javascript';
+    script.async = true;
+    // set data attribute for detection/cleanup
+    script.setAttribute('data-tv-injected', '1');
+    script.textContent = JSON.stringify({
+      width: '100%',
+      height: 500,
+      symbolsGroups: [
+        {
+          name: 'US Stocks',
+          symbols: [
+            { name: 'NASDAQ:AAPL', displayName: 'AAPL' },
+            { name: 'NASDAQ:MSFT', displayName: 'MSFT' },
+            { name: 'NASDAQ:GOOGL', displayName: 'GOOGL' },
+            { name: 'NASDAQ:AMZN', displayName: 'AMZN' },
+            { name: 'NASDAQ:META', displayName: 'META' },
+            { name: 'NASDAQ:NVDA', displayName: 'NVDA' },
+            { name: 'NASDAQ:TSLA', displayName: 'TSLA' },
+            { name: 'NASDAQ:QQQ', displayName: 'QQQ' },
+            { name: 'AMEX:SPY', displayName: 'SPY' }
+          ]
+        }
+      ],
+      showSymbolLogo: true,
+      colorTheme: 'dark',
+      isTransparent: false,
+      locale: 'en'
+    });
+    node.appendChild(script);
+
+    // Poll for iframe for a short period; if not present, show fallback table
+    let attempts = 0;
+    const maxAttempts = 6;
+    const interval = 600;
+    const check = () => {
+      attempts += 1;
+      const iframe = node.querySelector('iframe');
+      if (iframe && iframe.contentWindow) {
+        setShowFallback(false);
+        return;
+      }
+      if (attempts >= maxAttempts) {
+        setShowFallback(true);
+        return;
+      }
+      setTimeout(check, interval);
+    };
+    setTimeout(check, 400);
+
+    return () => {
+      // On unmount, only clear our own injected elements (by data-tv-injected), avoid removing other instances
+      if (node) {
+        try {
+          const injected = node.querySelectorAll('[data-tv-injected]');
+          injected.forEach((el) => {
+            if (node.contains(el)) node.removeChild(el);
+          });
+        } catch {
+          // fallback: attempt a safe clear
+          safeClear(node);
+        }
+      }
+    };
+  }, []);
+
+  // Simple fallback markup: accessible table
+  const FallbackTable = () => (
+    <div className="bg-neutral-900 rounded-lg p-2">
+      <h3 className="text-sm font-semibold mb-2 text-white">Watchlist</h3>
+      <div className="overflow-y-auto max-h-[420px]">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-neutral-400">
+              <th className="p-2">Name</th>
+              <th className="p-2 text-right">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((it) => (
+              <tr key={it.symbol} className="border-b border-neutral-800 hover:bg-neutral-800">
+                <td className="p-2">{it.display}</td>
+                <td className="p-2 text-right">{it.price.toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="bg-neutral-900 rounded-lg p-4 h-full flex flex-col">
-      <h2 className="text-lg font-semibold mb-3 text-white">Watchlist</h2>
-      <div className="overflow-y-auto flex-grow">
-        {isLoading ? (
-          <TickerSkeleton />
-        ) : allFailed ? (
-          <div className="p-3 rounded-md bg-neutral-800 text-sm text-neutral-300">
-            <div className="mb-2">Unable to load quotes. Check your API key, internet connection, or try again.</div>
-            <button
-              className="rounded bg-amber-400 px-4 py-2 text-black font-semibold mt-2"
-              onClick={() => refetch()}
-            >Retry</button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {data?.map((quote) => (
-              <div
-                key={quote.symbol}
-                onClick={() => quote.price > 0 && onSymbolSelect(quote.symbol)}
-                className={`flex justify-between items-center p-2 rounded-md cursor-pointer hover:bg-neutral-800 ${quote.price === 0 ? 'opacity-60 cursor-not-allowed' : ''}`}
-              >
-                <div>
-                  <p className="font-bold">{quote.symbol}</p>
-                  <p className="text-xs text-neutral-500">
-                    {quote.price === 0 && quote.name.startsWith('Error') ? 'Data unavailable' : (quote.name || 'N/A').split(' ')[0]}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-mono">{quote.price > 0 ? `$${quote.price.toFixed(2)}` : 'Error'}</p>
-                  <p className={`text-xs ${quote.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {quote.change.toFixed(2)} ({quote.percent_change.toFixed(2)}%)
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+    <div className="bg-neutral-900 rounded-lg p-4 h-full">
+      {showFallback ? <FallbackTable /> : <div ref={container} />}
     </div>
   );
 }

@@ -8,9 +8,10 @@ export default defineConfig({
       '@': '/src',
     },
   },
+  // Do NOT include the external: ['react', 'react-dom'] line!
   build: {
     rollupOptions: {
-      external: ['react', 'react-dom'], // Add external dependencies here
+      // external: ['react', 'react-dom'],  // <--- REMOVE or comment this out
     },
   },
 });
