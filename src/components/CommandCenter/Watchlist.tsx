@@ -1,81 +1,50 @@
-import { useQuery } from '@tanstack/react-query';
-import { apiGet } from '../../api/client';
-import TickerSkeleton from '../common/TickerSkeleton';
+import { useEffect, useRef } from 'react';
 
-const SYMBOLS = ['SPY', 'QQQ', 'DIA', 'AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOGL', 'META'];
+export default function Watchlist() {
+  const container = useRef<HTMLDivElement>(null);
 
-interface Quote {
-  symbol: string;
-  name: string;
-  price: number;
-  change: number;
-  percent_change: number;
-}
+  useEffect(() => {
+    if (!container.current) return;
+    container.current.innerHTML = '';
+    const script = document.createElement('script');
+    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-market-quotes.js";
+    script.type = "text/javascript";
+    script.async = true;
+    script.innerHTML = JSON.stringify({
+      width: "100%",
+      height: 500,
+      symbolsGroups: [
+        {
+          name: "US Stocks",
+          symbols: [
+            { name: "NASDAQ:AAPL", displayName: "AAPL" },
+            { name: "NASDAQ:MSFT", displayName: "MSFT" },
+            { name: "NASDAQ:GOOGL", displayName: "GOOGL" },
+            { name: "NASDAQ:AMZN", displayName: "AMZN" },
+            { name: "NASDAQ:META", displayName: "META" },
+            { name: "NASDAQ:NVDA", displayName: "NVDA" },
+            { name: "NASDAQ:TSLA", displayName: "TSLA" },
+            { name: "NASDAQ:QQQ", displayName: "QQQ" },
+            { name: "AMEX:SPY", displayName: "SPY" }
+          ]
+        }
+      ],
+      showSymbolLogo: true,
+      colorTheme: "dark",
+      isTransparent: false,
+      locale: "en"
+    });
+    container.current.appendChild(script);
 
-function useWatchlistQuotes() {
-  return useQuery<Quote[]>({
-    queryKey: ['watchlistQuotes'],
-    queryFn: async () => {
-      const promises = SYMBOLS.map(symbol =>
-        apiGet<any>('quote', { symbol }).then(data => ({
-          symbol: data.symbol,
-          name: data.name,
-          price: parseFloat(data.price || data.close || '0'),
-          change: parseFloat(data.change || '0'),
-          percent_change: parseFloat(data.percent_change || '0'),
-        })).catch(e => ({ symbol, name: `Error: ${e.message}`, price: 0, change: 0, percent_change: 0 }))
-      );
-      return Promise.all(promises);
-    },
-    refetchInterval: 60000, // Refetch every 60 seconds
-  });
-}
-
-export default function Watchlist({ onSymbolSelect }: { onSymbolSelect: (symbol: string) => void }) {
-  const { data, isLoading, refetch } = useWatchlistQuotes();
-
-  // Detect if all failed
-  const allFailed = data && data.every(q => q.price === 0);
+    return () => {
+      if (container.current) container.current.innerHTML = '';
+    };
+  }, []);
 
   return (
-    <div className="bg-neutral-900 rounded-lg p-4 h-full flex flex-col">
+    <div className="bg-neutral-900 rounded-lg p-4 h-full">
       <h2 className="text-lg font-semibold mb-3 text-white">Watchlist</h2>
-      <div className="overflow-y-auto flex-grow">
-        {isLoading ? (
-          <TickerSkeleton />
-        ) : allFailed ? (
-          <div className="p-3 rounded-md bg-neutral-800 text-sm text-neutral-300">
-            <div className="mb-2">Unable to load quotes. Check your API key, internet connection, or try again.</div>
-            <button
-              className="rounded bg-amber-400 px-4 py-2 text-black font-semibold mt-2"
-              onClick={() => refetch()}
-            >Retry</button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {data?.map((quote) => (
-              <div
-                key={quote.symbol}
-                onClick={() => quote.price > 0 && onSymbolSelect(quote.symbol)}
-                className={`flex justify-between items-center p-2 rounded-md cursor-pointer hover:bg-neutral-800 ${quote.price === 0 ? 'opacity-60 cursor-not-allowed' : ''}`}
-              >
-                <div>
-                  <p className="font-bold">{quote.symbol}</p>
-                  <p className="text-xs text-neutral-500">
-                    {quote.price === 0 && quote.name.startsWith('Error') ? 'Data unavailable' : (quote.name || 'N/A').split(' ')[0]}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-mono">{quote.price > 0 ? `$${quote.price.toFixed(2)}` : 'Error'}</p>
-                  <p className={`text-xs ${quote.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {quote.change.toFixed(2)} ({quote.percent_change.toFixed(2)}%)
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <div ref={container} />
     </div>
   );
 }
