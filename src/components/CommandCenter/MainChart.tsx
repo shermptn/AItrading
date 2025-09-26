@@ -46,7 +46,7 @@ export default function MainChart({ symbol }: { symbol: string }) {
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    // Remove old chart if it exists
+    // Remove old chart if it exists (guarded)
     if (chartRef.current) {
       try {
         chartRef.current.remove();
@@ -83,7 +83,6 @@ export default function MainChart({ symbol }: { symbol: string }) {
       });
       chartRef.current = chart;
     } catch (err) {
-      // If chart creation fails, show a helpful message in the container.
       console.error('Failed to create chart:', err);
       if (chartContainerRef.current) {
         chartContainerRef.current.innerHTML =
@@ -92,7 +91,7 @@ export default function MainChart({ symbol }: { symbol: string }) {
       return;
     }
 
-    // Create series safely: feature-detect addCandlestickSeries (some installs / versions may differ)
+    // Create series safely: feature-detect addCandlestickSeries (some builds/versions may differ)
     try {
       const asAny = chart as any;
       if (typeof asAny.addCandlestickSeries === 'function') {
@@ -112,8 +111,10 @@ export default function MainChart({ symbol }: { symbol: string }) {
           seriesRef.current = asAny.addLineSeries();
         } else {
           // last-resort: do nothing and display a friendly notice
-          chartContainerRef.current!.innerHTML =
-            '<div style="padding:18px;color:#fbbf24;text-align:center;">Chart type not supported in this build. Please update the chart library.</div>';
+          if (chartContainerRef.current) {
+            chartContainerRef.current.innerHTML =
+              '<div style="padding:18px;color:#fbbf24;text-align:center;">Chart type not supported in this build. Please update the chart library.</div>';
+          }
         }
       }
     } catch (err) {
