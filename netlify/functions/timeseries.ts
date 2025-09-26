@@ -34,6 +34,7 @@ export const handler: Handler = async (event) => {
     };
   }
 
+  // Corrected URL construction (was malformed previously)
   const url = `${API_BASE}/time_series?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&outputsize=${encodeURIComponent(limit)}&format=json&apikey=${encodeURIComponent(key)}`;
 
   try {
