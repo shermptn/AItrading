@@ -1,35 +1,20 @@
-import React, { useEffect, useRef, memo } from 'react';
+import React, { useRef } from 'react';
+import { useTradingViewWidget } from '../../hooks/useTradingViewWidget';
+
+const widgetConfig = {
+  "colorTheme": "dark", "isTransparent": false, "locale": "en", "countryFilter": "us,ca",
+  "importanceFilter": "-1,0,1", "width": "100%", "height": "100%"
+};
 
 function EconomicCalendarWidget() {
-  const container = useRef();
+  const containerRef = useRef<HTMLDivElement>(null);
+  useTradingViewWidget({
+    widgetScriptSrc: "https://s3.tradingview.com/external-embedding/embed-widget-events.js",
+    widgetConfig,
+    containerRef
+  });
 
-  useEffect(
-    () => {
-      const script = document.createElement("script");
-      script.src = "https://s3.tradingview.com/external-embedding/embed-widget-events.js";
-      script.type = "text/javascript";
-      script.async = true;
-      script.innerHTML = `
-        {
-          "colorTheme": "dark",
-          "isTransparent": false,
-          "locale": "en",
-          "countryFilter": "us,ca",
-          "importanceFilter": "-1,0,1",
-          "width": 400,
-          "height": 550
-        }`;
-      container.current.appendChild(script);
-    },
-    []
-  );
-
-  return (
-    <div className="tradingview-widget-container" ref={container}>
-      <div className="tradingview-widget-container__widget"></div>
-      <div className="tradingview-widget-copyright"><a href="https://www.tradingview.com/economic-calendar/" rel="noopener nofollow" target="_blank"><span className="blue-text">Economic Calendar</span></a><span className="trademark"> by TradingView</span></div>
-    </div>
-  );
+  return <div className="tradingview-widget-container" ref={containerRef} style={{ height: "100%", width: "100%" }}></div>;
 }
 
-export default memo(EconomicCalendarWidget);
+export default React.memo(EconomicCalendarWidget);
