@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { IChartApi, UTCTimestamp } from 'lightweight-charts'; // only types imported statically
+import type { IChartApi, UTCTimestamp } from 'lightweight-charts'; // types only
 import { useQuery } from '@tanstack/react-query';
 import { apiGet } from '../../api/client';
 
@@ -19,8 +19,8 @@ function useCandleData(symbol: string) {
       const res = await apiGet<any>('timeseries', { symbol, interval: '1day', limit: '250' });
       return res;
     },
-    staleTime: 1000 * 60 * 10, // 10 minutes
-    cacheTime: 1000 * 60 * 30, // 30 minutes
+    staleTime: 1000 * 60 * 10,
+    cacheTime: 1000 * 60 * 30,
     refetchOnWindowFocus: false,
     keepPreviousData: true,
     retry: 1,
@@ -46,16 +46,16 @@ export default function MainChart({ symbol }: { symbol: string }) {
   const seriesRef = useRef<any>(null);
   const { data, isLoading, error } = useCandleData(symbol);
 
-  // localStorage key helper
+  // local cache key
   const cacheKey = `timeseries:${symbol}`;
 
-  // Persist successful responses for fallback use
+  // Persist data for fallback
   useEffect(() => {
     if (data?.values) {
       try {
         localStorage.setItem(cacheKey, JSON.stringify(data.values));
       } catch {
-        // ignore storage errors
+        /* ignore */
       }
     }
   }, [data, cacheKey]);
@@ -63,7 +63,7 @@ export default function MainChart({ symbol }: { symbol: string }) {
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    // Remove old chart if it exists (guarded)
+    // remove previous chart defensively
     if (chartRef.current) {
       try {
         chartRef.current.remove();
@@ -78,73 +78,59 @@ export default function MainChart({ symbol }: { symbol: string }) {
 
     (async () => {
       try {
-        // Dynamic import ensures a single runtime instance and avoids some bundling mismatch issues
         const module = await import('lightweight-charts');
         if (!mounted || !chartContainerRef.current) return;
 
+        console.debug('lightweight-charts module keys:', Object.keys(module));
         const { createChart, ColorType } = module;
+
         const chart = createChart(chartContainerRef.current, {
           width: chartContainerRef.current.clientWidth,
           height: 500,
-          layout: {
-            background: { type: ColorType.Solid, color: '#171717' },
-            textColor: '#e5e5e5',
-          },
-          grid: {
-            vertLines: { color: '#222' },
-            horzLines: { color: '#222' },
-          },
-          rightPriceScale: {
-            borderColor: '#444',
-          },
-          timeScale: {
-            borderColor: '#444',
-          },
-          crosshair: {
-            mode: 0,
-          },
+          layout: { background: { type: ColorType.Solid, color: '#171717' }, textColor: '#e5e5e5' },
+          grid: { vertLines: { color: '#222' }, horzLines: { color: '#222' } },
+          rightPriceScale: { borderColor: '#444' },
+          timeScale: { borderColor: '#444' },
+          crosshair: { mode: 0 },
         });
+
+        console.debug('chart instance keys:', Object.keys(chart as any));
         chartRef.current = chart;
 
-        // Create series safely: prefer addCandlestickSeries, otherwise fallback to line series
-        try {
-          if (typeof chart.addCandlestickSeries === 'function') {
-            seriesRef.current = chart.addCandlestickSeries({
-              upColor: '#16a34a',
-              downColor: '#dc2626',
-              borderUpColor: '#16a34a',
-              borderDownColor: '#dc2626',
-              wickUpColor: '#16a34a',
-              wickDownColor: '#dc2626',
-            });
-          } else if (typeof chart.addLineSeries === 'function') {
-            console.warn('addCandlestickSeries not available on chart instance; falling back to line series.');
-            seriesRef.current = chart.addLineSeries();
-          } else {
-            console.warn('Chart instance does not support candlestick or line series.');
-            // display a friendly message inside container
-            if (chartContainerRef.current) {
-              chartContainerRef.current.innerHTML =
-                '<div style="padding:18px;color:#fbbf24;text-align:center;">Chart type not supported in this build. Please update the chart library.</div>';
-            }
-            return;
+        // create series defensively and log if neither method exists
+        if (typeof (chart as any).addCandlestickSeries === 'function') {
+          seriesRef.current = (chart as any).addCandlestickSeries({
+            upColor: '#16a34a',
+            downColor: '#dc2626',
+            borderUpColor: '#16a34a',
+            borderDownColor: '#dc2626',
+            wickUpColor: '#16a34a',
+            wickDownColor: '#dc2626',
+          });
+        } else if (typeof (chart as any).addLineSeries === 'function') {
+          console.warn('addCandlestickSeries missing, falling back to addLineSeries');
+          seriesRef.current = (chart as any).addLineSeries();
+        } else {
+          // Log the issue so you can inspect in console
+          console.error('Chart instance does not support candlestick or line series. Chart keys:', Object.keys(chart as any));
+          // Show a friendly UI instead of throwing
+          if (chartContainerRef.current) {
+            chartContainerRef.current.innerHTML =
+              '<div style="padding:18px;color:#f87171;text-align:center;">Chart API unavailable in this build. Ensure lightweight-charts v5.x is installed and bundled.</div>';
           }
-        } catch (seriesErr) {
-          console.error('Failed to create series:', seriesErr);
+          return;
         }
 
-        // Attempt to populate with cached data if available immediately
+        // populate cached data if available immediately
         try {
           const raw = localStorage.getItem(cacheKey);
           if (raw && seriesRef.current) {
             const cached = JSON.parse(raw);
             const bars = transformData(cached);
-            if (typeof seriesRef.current.setData === 'function') {
-              seriesRef.current.setData(bars);
-            }
+            if (typeof seriesRef.current.setData === 'function') seriesRef.current.setData(bars);
           }
         } catch {
-          // ignore cache read errors
+          /* ignore */
         }
 
         // handle resizing
@@ -152,19 +138,15 @@ export default function MainChart({ symbol }: { symbol: string }) {
           if (chartContainerRef.current && chartRef.current) {
             try {
               chartRef.current.resize(chartContainerRef.current.clientWidth, 500);
-            } catch (e) {
-              // ignore resize errors
+            } catch {
+              /* ignore */
             }
           }
         };
         window.addEventListener('resize', handleResize);
-
-        // store cleanup on chart instance to call from outer cleanup
-        (chart as any).__cleanup = () => {
-          window.removeEventListener('resize', handleResize);
-        };
+        (chart as any).__cleanup = () => window.removeEventListener('resize', handleResize);
       } catch (err) {
-        console.error('Failed to load or initialize lightweight-charts dynamically:', err);
+        console.error('Error initializing chart:', err);
         if (chartContainerRef.current) {
           chartContainerRef.current.innerHTML =
             '<div style="padding:18px;color:#f87171;text-align:center;">Chart failed to initialize.</div>';
@@ -181,77 +163,54 @@ export default function MainChart({ symbol }: { symbol: string }) {
           } catch {}
           chartRef.current.remove();
         }
-      } catch (e) {
-        // ignore remove errors
+      } catch {
+        /* ignore */
       } finally {
         chartRef.current = null;
         seriesRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol]);
 
-  // Set data whenever it changes (or use cached fallback when quota exceeded)
+  // set new data
   useEffect(() => {
     if (seriesRef.current && data?.values) {
       try {
         const bars = transformData(data.values);
-        if (typeof seriesRef.current.setData === 'function') {
-          seriesRef.current.setData(bars);
-        } else if (typeof seriesRef.current.update === 'function') {
-          bars.forEach((b) => seriesRef.current.update(b));
-        }
+        if (typeof seriesRef.current.setData === 'function') seriesRef.current.setData(bars);
+        else if (typeof seriesRef.current.update === 'function') bars.forEach((b) => seriesRef.current.update(b));
       } catch (err) {
         console.error('Failed to set chart data:', err);
       }
     }
   }, [data]);
 
-  // Render with special handling for quota-exceeded error
+  // quota UI
   if (error && (error as any).code === 'quota_exceeded') {
-    // try to show cached data if present
     try {
       const raw = localStorage.getItem(cacheKey);
       if (raw && raw.length) {
-        // allow chart to display cached data that was set earlier
         return (
-          <div
-            ref={chartContainerRef}
-            className="h-[520px] w-full rounded-xl overflow-hidden bg-neutral-900"
-            style={{ minHeight: 400, minWidth: 320 }}
-          >
+          <div ref={chartContainerRef} className="h-[520px] w-full rounded-xl overflow-hidden bg-neutral-900" style={{ minHeight: 400, minWidth: 320 }}>
             <div className="text-amber-300 text-center pt-4">Using last known cached data (provider quota exhausted).</div>
           </div>
         );
       }
     } catch {
-      // ignore
+      /* ignore */
     }
-
     return (
-      <div
-        ref={chartContainerRef}
-        className="h-[520px] w-full rounded-xl overflow-hidden bg-neutral-900"
-        style={{ minHeight: 400, minWidth: 320 }}
-      >
-        <div className="text-center text-red-400 pt-40">
-          API credits exhausted for today. Please try again later or upgrade the data plan.
-        </div>
+      <div ref={chartContainerRef} className="h-[520px] w-full rounded-xl overflow-hidden bg-neutral-900" style={{ minHeight: 400, minWidth: 320 }}>
+        <div className="text-center text-red-400 pt-40">API credits exhausted for today. Please try again later or upgrade the data plan.</div>
       </div>
     );
   }
 
   return (
-    <div
-      ref={chartContainerRef}
-      className="h-[520px] w-full rounded-xl overflow-hidden bg-neutral-900"
-      style={{ minHeight: 400, minWidth: 320 }}
-    >
+    <div ref={chartContainerRef} className="h-[520px] w-full rounded-xl overflow-hidden bg-neutral-900" style={{ minHeight: 400, minWidth: 320 }}>
       {isLoading && <div className="text-center text-neutral-400 pt-40">Loading chart...</div>}
       {error && <div className="text-red-400 text-center pt-40">Failed to load chart: {error.message}</div>}
-      {!isLoading && !error && (!data?.values || data.values.length === 0) && (
-        <div className="text-neutral-400 text-center pt-40">No chart data available.</div>
-      )}
+      {!isLoading && !error && (!data?.values || data.values.length === 0) && <div className="text-neutral-400 text-center pt-40">No chart data available.</div>}
     </div>
   );
 }
