@@ -13,6 +13,12 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
 
   useEffect(() => {
     const injectWidget = (container: HTMLDivElement, src: string, config: any) => {
+      // Defensive cleanup
+      container.innerHTML = '';
+      const widget = document.createElement('div');
+      widget.className = 'tradingview-widget-container__widget';
+      container.appendChild(widget);
+
       const script = document.createElement('script');
       script.src = src;
       script.type = 'text/javascript';
@@ -22,7 +28,6 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
     };
 
     if (containers.ticker.current) {
-      containers.ticker.current.innerHTML = '';
       injectWidget(
         containers.ticker.current,
         'https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js',
@@ -39,9 +44,7 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
         }
       );
     }
-
     if (containers.advancedChart.current) {
-      containers.advancedChart.current.innerHTML = '';
       injectWidget(
         containers.advancedChart.current,
         'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js',
@@ -52,9 +55,7 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
         }
       );
     }
-
     if (containers.overview.current) {
-      containers.overview.current.innerHTML = '';
       injectWidget(
         containers.overview.current,
         'https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js',
@@ -74,6 +75,10 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
         }
       );
     }
+    // Cleanup on unmount
+    return () => {
+      Object.values(containers).forEach(ref => { if (ref.current) ref.current.innerHTML = ''; });
+    };
   }, [initialSymbol]);
 
   return (
