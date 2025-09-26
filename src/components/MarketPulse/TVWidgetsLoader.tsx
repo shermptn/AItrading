@@ -21,6 +21,7 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
     try {
       while (node.firstChild) {
         try {
+          // Check parent.contains(child) before removeChild to avoid NotFoundError
           if (node.contains(node.firstChild)) node.removeChild(node.firstChild);
           else break;
         } catch {
@@ -39,6 +40,12 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
   // Helper to inject and fallback with robust waiting for the iframe
   function injectWidget(container: HTMLDivElement, src: string, config: any) {
     if (!container) return;
+
+    // Check for existing injection to prevent double injection
+    const existingInjected = container.querySelector('[data-tv-injected]');
+    if (existingInjected) {
+      return; // Skip injection if already present
+    }
 
     safeClear(container);
 
@@ -102,7 +109,7 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
           colorTheme: 'dark',
           autosize: false,    // use explicit width/height to force size
           width: "100%",
-          height: 500,
+          height: 600,  // Increased from 500px
         }
       );
     }
@@ -115,7 +122,7 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
         {
           colorTheme: "dark",
           width: "100%",
-          height: 500,
+          height: 600,  // Increased from 500px
           showChart: true,
           locale: "en",
           isTransparent: false,
