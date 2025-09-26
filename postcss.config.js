@@ -1,8 +1,10 @@
-// Use the dedicated Tailwind PostCSS plugin package
+// PostCSS configuration — CommonJS module so PostCSS will always load it.
 module.exports = {
   plugins: [
-    // Install with: npm install --save-dev @tailwindcss/postcss
+    // Tailwind's PostCSS plugin (new separate package)
+    // Install: npm install --save-dev @tailwindcss/postcss
     require('@tailwindcss/postcss'),
+    // Autoprefixer for vendor prefixes
     require('autoprefixer'),
   ],
 };
