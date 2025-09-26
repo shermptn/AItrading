@@ -19,8 +19,8 @@ function useCandleData(symbol: string) {
       const res = await apiGet<any>('timeseries', { symbol, interval: '1day', limit: '250' });
       return res;
     },
-    staleTime: 1000 * 60 * 10,
-    cacheTime: 1000 * 60 * 30,
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    cacheTime: 1000 * 60 * 30, // 30 minutes
     refetchOnWindowFocus: false,
     keepPreviousData: true,
     retry: 1,
@@ -75,12 +75,11 @@ export default function MainChart({ symbol }: { symbol: string }) {
     }
 
     let mounted = true;
-    let module: any = null;
 
     (async () => {
       try {
-        // Dynamic import ensures the runtime module is loaded once and reduces duplicate bundling
-        module = await import('lightweight-charts');
+        // Dynamic import ensures a single runtime instance and avoids some bundling mismatch issues
+        const module = await import('lightweight-charts');
         if (!mounted || !chartContainerRef.current) return;
 
         const { createChart, ColorType } = module;
@@ -160,7 +159,7 @@ export default function MainChart({ symbol }: { symbol: string }) {
         };
         window.addEventListener('resize', handleResize);
 
-        // cleanup registration stored on closure
+        // store cleanup on chart instance to call from outer cleanup
         (chart as any).__cleanup = () => {
           window.removeEventListener('resize', handleResize);
         };
@@ -177,7 +176,6 @@ export default function MainChart({ symbol }: { symbol: string }) {
       mounted = false;
       try {
         if (chartRef.current) {
-          // call the registered cleanup if present
           try {
             (chartRef.current as any).__cleanup?.();
           } catch {}
