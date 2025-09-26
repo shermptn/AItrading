@@ -1,35 +1,20 @@
-import React, { useEffect, useRef, memo } from 'react';
+import React, { useRef } from 'react';
+import { useTradingViewWidget } from '../../hooks/useTradingViewWidget';
+
+const widgetConfig = {
+  "displayMode": "regular", "feedMode": "all_symbols", "colorTheme": "dark", "isTransparent": false,
+  "locale": "en", "width": "100%", "height": "100%"
+};
 
 function TimelineWidget() {
-  const container = useRef();
+  const containerRef = useRef<HTMLDivElement>(null);
+  useTradingViewWidget({
+    widgetScriptSrc: "https://s3.tradingview.com/external-embedding/embed-widget-timeline.js",
+    widgetConfig,
+    containerRef
+  });
 
-  useEffect(
-    () => {
-      const script = document.createElement("script");
-      script.src = "https://s3.tradingview.com/external-embedding/embed-widget-timeline.js";
-      script.type = "text/javascript";
-      script.async = true;
-      script.innerHTML = `
-        {
-          "displayMode": "regular",
-          "feedMode": "all_symbols",
-          "colorTheme": "dark",
-          "isTransparent": false,
-          "locale": "en",
-          "width": 400,
-          "height": 550
-        }`;
-      container.current.appendChild(script);
-    },
-    []
-  );
-
-  return (
-    <div className="tradingview-widget-container" ref={container}>
-      <div className="tradingview-widget-container__widget"></div>
-      <div className="tradingview-widget-copyright"><a href="https://www.tradingview.com/news/top-providers/tradingview/" rel="noopener nofollow" target="_blank"><span className="blue-text">Top stories</span></a><span className="trademark"> by TradingView</span></div>
-    </div>
-  );
+  return <div className="tradingview-widget-container" ref={containerRef} style={{ height: "100%", width: "100%" }}></div>;
 }
 
-export default memo(TimelineWidget);
+export default React.memo(TimelineWidget);
