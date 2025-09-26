@@ -6,51 +6,72 @@ interface Props {
 
 /**
  * TVWidgetsLoader
- * Renders TradingView ticker tape, advanced chart, and market overview widgets.
- * If a widget is blocked by an adblocker, shows a fallback message and a retry button.
+ * Robust TradingView widget embed with polling, retry UI, and safe cleanup.
  */
 export default function TVWidgetsLoader({ initialSymbol }: Props) {
   const containers = {
-    ticker: useRef<HTMLDivElement>(null),
-    advancedChart: useRef<HTMLDivElement>(null),
-    overview: useRef<HTMLDivElement>(null),
+    ticker: useRef<HTMLDivElement | null>(null),
+    advancedChart: useRef<HTMLDivElement | null>(null),
+    overview: useRef<HTMLDivElement | null>(null),
   };
+
+  function safeClear(node: HTMLElement) {
+    try {
+      // remove children one-by-one to avoid removeChild race issues
+      while (node.firstChild) {
+        try {
+          node.removeChild(node.firstChild);
+        } catch (e) {
+          // If a child was already removed by a 3rd-party script, break to avoid spinning
+          break;
+        }
+      }
+    } catch (e) {
+      // fallback to setting innerHTML if removeChild fails
+      try {
+        node.innerHTML = '';
+      } catch {
+        // ignore
+      }
+    }
+  }
 
   // Helper to inject and fallback with robust waiting for the iframe
   function injectWidget(container: HTMLDivElement, src: string, config: any) {
-    // Clear and prepare container
-    try {
-      container.innerHTML = '';
-    } catch (e) {
-      console.warn('Failed to clear container before injecting widget:', e);
-    }
+    if (!container) return;
 
-    const widget = document.createElement('div');
-    widget.className = 'tradingview-widget-container__widget';
-    container.appendChild(widget);
+    safeClear(container);
+
+    const widgetWrapper = document.createElement('div');
+    widgetWrapper.className = 'tradingview-widget-container__widget';
+    container.appendChild(widgetWrapper);
 
     const script = document.createElement('script');
     script.src = src;
     script.type = 'text/javascript';
     script.async = true;
-    // TradingView expects the configuration JSON inside the script tag
     script.textContent = JSON.stringify(config);
+
+    // mark script with attribute to help cleanup later
+    script.setAttribute('data-tv-injected', '1');
+
     container.appendChild(script);
 
-    // Wait for iframe to appear and for contentWindow to be available (some browsers or blockers delay this).
-    const maxAttempts = 6;
+    // Poll for iframe and contentWindow
+    const maxAttempts = 8;
     let attempt = 0;
-    const interval = 700;
+    const interval = 600;
 
     const checkReady = () => {
       attempt += 1;
       const iframe = container.querySelector('iframe') as HTMLIFrameElement | null;
       if (iframe && iframe.contentWindow) {
-        // widget loaded successfully
+        // loaded successfully
         return;
       }
       if (attempt >= maxAttempts) {
-        // assume widget blocked or failed
+        // fallback UI
+        safeClear(container);
         try {
           container.innerHTML = `
             <div style="padding:18px;text-align:center;color:#fbbf24;">
@@ -60,18 +81,16 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
             </div>
           `;
           const btn = container.querySelector('#tv-retry-btn');
-          if (btn) btn.addEventListener('click', () => injectWidget(container, src, config));
-        } catch (e) {
-          console.warn('Failed to render TradingView fallback UI:', e);
+          if (btn) btn.addEventListener('click', () => injectWidget(container, src, config), { once: true });
+        } catch {
+          // ignore fallback render errors
         }
         return;
       }
-      // keep waiting
       setTimeout(checkReady, interval);
     };
 
-    // Start checking after a small delay to give the external script time to create an iframe
-    setTimeout(checkReady, 500);
+    setTimeout(checkReady, 400);
   }
 
   useEffect(() => {
@@ -99,6 +118,7 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
         }
       );
     }
+
     if (containers.advancedChart.current) {
       injectWidget(
         containers.advancedChart.current,
@@ -110,6 +130,7 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
         }
       );
     }
+
     if (containers.overview.current) {
       injectWidget(
         containers.overview.current,
@@ -147,15 +168,10 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
     }
 
     return () => {
-      // robust cleanup
+      // cleanup safely
       Object.values(containers).forEach(ref => {
-        if (ref.current) {
-          try {
-            ref.current.innerHTML = '';
-          } catch (e) {
-            console.warn('Failed to clear widget container during cleanup:', e);
-          }
-        }
+        const node = ref.current;
+        if (node) safeClear(node);
       });
     };
   }, [initialSymbol]);
