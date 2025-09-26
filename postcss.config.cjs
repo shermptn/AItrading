@@ -2,8 +2,7 @@
 // It uses the dedicated Tailwind PostCSS plugin and autoprefixer.
 module.exports = {
   plugins: [
-    // use the new dedicated plugin package
-    require('@tailwindcss/postcss'),
+    require('tailwindcss'),
     require('autoprefixer'),
   ],
 };
