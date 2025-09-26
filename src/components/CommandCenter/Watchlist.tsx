@@ -7,7 +7,6 @@ export default function Watchlist() {
     const node = container.current;
     if (!node) return;
 
-    // safe clear helper inline
     const safeClear = (n: HTMLElement) => {
       try {
         while (n.firstChild) {
