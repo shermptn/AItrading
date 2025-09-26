@@ -10,6 +10,7 @@ export default function Watchlist() {
     const safeClear = (n: HTMLElement) => {
       try {
         while (n.firstChild) {
+          // Check parent.contains(child) before removeChild to avoid NotFoundError
           if (n.contains(n.firstChild)) n.removeChild(n.firstChild);
           else break;
         }
@@ -20,12 +21,19 @@ export default function Watchlist() {
       }
     };
 
+    // Check for existing injection to prevent duplication
+    const existingInjected = node.querySelector('[data-tv-injected]');
+    if (existingInjected) {
+      return; // Skip injection if already present
+    }
+
     safeClear(node);
 
     const script = document.createElement('script');
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-market-quotes.js';
     script.type = 'text/javascript';
     script.async = true;
+    script.setAttribute('data-tv-injected', '1'); // Mark as injected
     script.textContent = JSON.stringify({
       width: '100%',
       height: 500,

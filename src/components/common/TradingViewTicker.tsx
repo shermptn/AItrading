@@ -20,12 +20,19 @@ export default function TradingViewTicker() {
       }
     };
 
+    // Check if ticker is already injected to prevent double injection
+    const existingInjected = node.querySelector('[data-tv-injected]') || node.querySelector('iframe');
+    if (existingInjected) {
+      return; // Skip injection if already present
+    }
+
     safeClear(node);
 
     const script = document.createElement('script');
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js';
     script.type = 'text/javascript';
     script.async = true;
+    script.setAttribute('data-tv-injected', '1'); // Mark as injected
     script.textContent = JSON.stringify({
       symbols: [
         { proName: 'NASDAQ:AAPL', title: 'AAPL' },
@@ -47,7 +54,10 @@ export default function TradingViewTicker() {
     node.appendChild(script);
 
     return () => {
-      if (node) safeClear(node);
+      // Only clear on unmount, not if another instance is present
+      if (node && !document.querySelector('[data-tv-injected]:not([data-tv-injected="' + script.getAttribute('data-tv-injected') + '"])')) {
+        safeClear(node);
+      }
     };
   }, []);
 

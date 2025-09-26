@@ -65,7 +65,7 @@ function Sparkline({ bars }: { bars: Bar[] }) {
   const path = closes.map((c, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(c)}`).join(' ');
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 500 }}>
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 640 }}>  {/* Updated height to match main chart */}
       <defs>
         <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
           <stop offset="0%" stopColor="#16a34a" stopOpacity="0.18" />
@@ -172,7 +172,7 @@ export default function MainChart({ symbol }: { symbol: string }) {
         const { createChart, ColorType } = module;
         const chart = createChart(chartContainerRef.current, {
           width: chartContainerRef.current.clientWidth,
-          height: 500,
+          height: 640,  // Increased from 500px
           layout: {
             background: { type: ColorType.Solid, color: '#171717' },
             textColor: '#e5e5e5',
@@ -249,13 +249,17 @@ export default function MainChart({ symbol }: { symbol: string }) {
         const handleResize = () => {
           if (chartContainerRef.current && chartRef.current) {
             try {
-              chartRef.current.resize(chartContainerRef.current.clientWidth, 500);
+              chartRef.current.resize(chartContainerRef.current.clientWidth, 640);  // Use 640px height consistently
             } catch {
               /* ignore */
             }
           }
         };
         window.addEventListener('resize', handleResize);
+        
+        // Initial resize to set proper dimensions
+        handleResize();
+        
         (chart as any).__cleanup = () => window.removeEventListener('resize', handleResize);
       } catch (err) {
         console.error('Error initializing chart:', err);
@@ -311,21 +315,21 @@ export default function MainChart({ symbol }: { symbol: string }) {
     if (!barsToRender || barsToRender.length === 0) {
       if (error && (error as any).code === 'quota_exceeded') {
         return (
-          <div className="h-[520px] w-full rounded-xl overflow-hidden bg-neutral-900" style={{ minHeight: 400, minWidth: 320 }}>
+          <div className="h-[680px] w-full rounded-xl overflow-hidden bg-neutral-900" style={{ minHeight: 640, minWidth: 320 }}>  {/* Updated height */}
             <div className="text-center text-red-400 pt-40">API credits exhausted for today. Showing fallback view.</div>
             <div className="text-neutral-400 text-center mt-2">No cached data available.</div>
           </div>
         );
       }
       return (
-        <div className="h-[520px] w-full rounded-xl overflow-hidden bg-neutral-900" style={{ minHeight: 400, minWidth: 320 }}>
+        <div className="h-[680px] w-full rounded-xl overflow-hidden bg-neutral-900" style={{ minHeight: 640, minWidth: 320 }}>  {/* Updated height */}
           <div className="text-neutral-400 text-center pt-40">Loading fallback chart...</div>
         </div>
       );
     }
 
     return (
-      <div className="h-[520px] w-full rounded-xl overflow-hidden bg-neutral-900" style={{ minHeight: 400, minWidth: 320 }}>
+      <div className="h-[680px] w-full rounded-xl overflow-hidden bg-neutral-900" style={{ minHeight: 640, minWidth: 320 }}>  {/* Updated height */}
         <div className="text-amber-300 text-center pt-2">Using lightweight fallback chart (basic sparkline)</div>
         <Sparkline bars={barsToRender} />
       </div>
@@ -336,8 +340,8 @@ export default function MainChart({ symbol }: { symbol: string }) {
   return (
     <div
       ref={chartContainerRef}
-      className="h-[520px] w-full rounded-xl overflow-hidden bg-neutral-900"
-      style={{ minHeight: 400, minWidth: 320 }}
+      className="h-[680px] w-full rounded-xl overflow-hidden bg-neutral-900"
+      style={{ minHeight: 640, minWidth: 320 }}
     >
       {isLoading && <div className="text-center text-neutral-400 pt-40">Loading chart...</div>}
       {error && (error as any).code !== 'quota_exceeded' && (
