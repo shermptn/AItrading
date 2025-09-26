@@ -1,9 +1,8 @@
-import fetch from 'node-fetch';
-import { Handler } from '@netlify/functions';
+import type { Handler } from '@netlify/functions';
 
 const API_BASE = 'https://api.twelvedata.com';
 
-const handler: Handler = async (event) => {
+export const handler: Handler = async (event) => {
   const { symbol = 'SPY', interval = '1day', limit = '250' } = event.queryStringParameters || {};
   const key = process.env.TWELVEDATA_API_KEY;
   if (!key) {
@@ -20,16 +19,16 @@ const handler: Handler = async (event) => {
     const text = await resp.text();
     let json: any;
     try {
-      json = JSON.parse(text);
+      json = text ? JSON.parse(text) : {};
     } catch (parseErr) {
       console.error('Failed to parse TwelveData response', parseErr);
       return { statusCode: 502, body: JSON.stringify({ error: 'invalid_response', message: 'Invalid response from data provider.' }) };
     }
 
-    // Detect quota/exhausted message (TwelveData returns error objects in body)
-    if (json && json.status === 'error') {
+    // Detect provider error objects
+    if (json && (json.status === 'error' || json.code)) {
       const message = json.message || JSON.stringify(json);
-      if (/run out of API credits|quota/i.test(message)) {
+      if (/run out of API credits|quota|exceeded/i.test(message)) {
         return {
           statusCode: 429,
           body: JSON.stringify({ error: 'quota_exceeded', message }),
@@ -41,9 +40,10 @@ const handler: Handler = async (event) => {
       };
     }
 
-    // Success path: return the JSON as-is
+    // Success path: return JSON
     return {
       statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(json),
     };
   } catch (err) {
@@ -54,5 +54,3 @@ const handler: Handler = async (event) => {
     };
   }
 };
-
-export { handler };
