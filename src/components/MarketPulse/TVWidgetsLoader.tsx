@@ -17,17 +17,16 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
 
   function safeClear(node: HTMLElement) {
     try {
-      // remove children one-by-one to avoid removeChild race issues
       while (node.firstChild) {
         try {
-          node.removeChild(node.firstChild);
-        } catch (e) {
-          // If a child was already removed by a 3rd-party script, break to avoid spinning
+          if (node.contains(node.firstChild)) node.removeChild(node.firstChild);
+          else break;
+        } catch {
+          // if a child was already removed by third-party script, break
           break;
         }
       }
-    } catch (e) {
-      // fallback to setting innerHTML if removeChild fails
+    } catch {
       try {
         node.innerHTML = '';
       } catch {
@@ -51,8 +50,6 @@ export default function TVWidgetsLoader({ initialSymbol }: Props) {
     script.type = 'text/javascript';
     script.async = true;
     script.textContent = JSON.stringify(config);
-
-    // mark script with attribute to help cleanup later
     script.setAttribute('data-tv-injected', '1');
 
     container.appendChild(script);
