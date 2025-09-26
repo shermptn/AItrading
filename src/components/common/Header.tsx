@@ -1,4 +1,5 @@
 import { useAuth } from '../../auth/AuthContext';
+import TradingViewTicker from './TradingViewTicker';
 
 type Page = 'commandCenter' | 'marketPulse' | 'knowledgeHub';
 
@@ -39,9 +40,15 @@ export default function Header({ activePage, setActivePage }: Props) {
           )}
         </div>
       </div>
+
       <div className="text-center">
         <h2 className="text-3xl font-bold text-white">Your Unified Trading Cockpit</h2>
         <p className="text-neutral-400 mt-2 max-w-2xl mx-auto">We provide institutional-grade data, clean UI, and contextual AI insights—without the bloat or the cost.</p>
+
+        {/* TradingView ticker placed directly under the header text on the homepage */}
+        <div className="mt-4">
+          <TradingViewTicker />
+        </div>
       </div>
     </header>
   );
