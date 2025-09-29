@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import CommandCenterPage from './pages/CommandCenterPage';
-import MarketPulsePage from './pages/MarketPulsePage';
+import MarketPulsePage from "./MarketPulsePage";
 import KnowledgeHubPage from './pages/KnowledgeHubPage';
 import Header from './components/common/Header';
 
