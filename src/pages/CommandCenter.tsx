@@ -6,16 +6,15 @@ import {
   TimelineWidget,
   EconomicCalendarWidget
 } from '../components/tradingview';
-import { ErrorBoundary } from '../components/common/ErrorBoundary';
+import ErrorBoundary from '../components/common/ErrorBoundary'; // Corrected: Removed curly braces
 import Watchlist from '../components/CommandCenter/Watchlist';
 import AILaunchpad from '../components/CommandCenter/AILaunchpad';
 
-function CommandCenter() {
+function CommandCenterPage() { // Renamed from CommandCenter to follow convention
   const [selectedSymbol, setSelectedSymbol] = useState('NASDAQ:NDX');
 
-  const handleSymbolSelect = (symbol) => {
-    // The AdvancedChartWidget is not directly controllable via props in this setup,
-    // but this structure allows for future enhancements.
+  const handleSymbolSelect = (symbol: string) => {
+    // This function can be used to update other components if needed in the future
     setSelectedSymbol(symbol);
   };
 
@@ -27,7 +26,8 @@ function CommandCenter() {
         <div className="xl:col-span-3 space-y-4">
           <div className="h-[600px] bg-neutral-900 rounded-lg">
             <ErrorBoundary>
-              <AdvancedChartWidget />
+              {/* Pass the selected symbol to the chart widget if it accepts it */}
+              <AdvancedChartWidget symbol={selectedSymbol} />
             </ErrorBoundary>
           </div>
           <div className="h-[550px] bg-neutral-900 rounded-lg p-4">
@@ -74,4 +74,4 @@ function CommandCenter() {
   );
 }
 
-export default CommandCenter;
+export default CommandCenterPage;
