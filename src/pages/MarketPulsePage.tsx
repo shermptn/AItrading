@@ -1,6 +1,6 @@
 import React from 'react';
 import { StockHeatmapWidget, CryptoHeatmapWidget, TickerTapeWidget } from '../components/tradingview';
-import { ErrorBoundary } from '../components/common/ErrorBoundary';
+import ErrorBoundary from "./components/common/ErrorBoundary";
 
 function MarketPulsePage() {
   return (
