@@ -1,95 +1,46 @@
-import React from 'react';
-import { 
-  StockHeatmapWidget, 
-  CryptoHeatmapWidget, 
-  TickerTapeWidget,
-  AdvancedChartWidget,
-  EconomicCalendarWidget,
-  ForexScreenerWidget,
-  MarketQuotesWidget,
-  TimelineWidget
-} from '../components/tradingview';
-import ErrorBoundary from "../components/common/ErrorBoundary";
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 
-function MarketPulsePage() {
-  return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-white mb-4">Market Pulse</h1>
-      
-      <ErrorBoundary>
-        <TickerTapeWidget />
-      </ErrorBoundary>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-neutral-900 rounded-lg p-4">
-          <h2 className="text-lg font-semibold mb-3 text-white">Stock Market Heatmap</h2>
-          <div className="h-[500px]">
-            <ErrorBoundary>
-              <StockHeatmapWidget />
-            </ErrorBoundary>
-          </div>
-        </div>
-
-        <div className="bg-neutral-900 rounded-lg p-4">
-          <h2 className="text-lg font-semibold mb-3 text-white">Crypto Market Heatmap</h2>
-          <div className="h-[500px]">
-            <ErrorBoundary>
-              <CryptoHeatmapWidget />
-            </ErrorBoundary>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-neutral-900 rounded-lg p-4">
-          <h2 className="text-lg font-semibold mb-3 text-white">Advanced Chart</h2>
-          <div className="h-[400px]">
-            <ErrorBoundary>
-              <AdvancedChartWidget />
-            </ErrorBoundary>
-          </div>
-        </div>
-
-        <div className="bg-neutral-900 rounded-lg p-4">
-          <h2 className="text-lg font-semibold mb-3 text-white">Market Quotes</h2>
-          <div className="h-[400px]">
-            <ErrorBoundary>
-              <MarketQuotesWidget />
-            </ErrorBoundary>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-neutral-900 rounded-lg p-4">
-          <h2 className="text-lg font-semibold mb-3 text-white">Forex Screener</h2>
-          <div className="h-[400px]">
-            <ErrorBoundary>
-              <ForexScreenerWidget />
-            </ErrorBoundary>
-          </div>
-        </div>
-
-        <div className="bg-neutral-900 rounded-lg p-4">
-          <h2 className="text-lg font-semibold mb-3 text-white">Economic Calendar</h2>
-          <div className="h-[400px]">
-            <ErrorBoundary>
-              <EconomicCalendarWidget />
-            </ErrorBoundary>
-          </div>
-        </div>
-      </div>
-      
-      <div className="bg-neutral-900 rounded-lg p-4">
-        <h2 className="text-lg font-semibold mb-3 text-white">Market Timeline</h2>
-        <div className="h-[400px]">
-          <ErrorBoundary>
-            <TimelineWidget />
-          </ErrorBoundary>
-        </div>
-      </div>
-    </div>
-  );
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
 }
 
-export default MarketPulsePage;
+interface State {
+  hasError: boolean;
+}
+
+class ErrorBoundary extends Component<Props, State> {
+  public state: State = {
+    hasError: false,
+  };
+
+  public static getDerivedStateFromError(_: Error): State {
+    // This lifecycle method is called after an error has been thrown by a descendant component.
+    // It should return a value to update state.
+    return { hasError: true };
+  }
+
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // You can log the error to an error reporting service here
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  }
+
+  public render() {
+    if (this.state.hasError) {
+      // You can render any custom fallback UI
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+      return (
+        <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-4 text-center">
+          <h3 className="text-red-400 font-semibold">Widget Error</h3>
+          <p className="text-red-500 text-sm mt-1">This component failed to load.</p>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+export default ErrorBoundary;
