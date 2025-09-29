@@ -2,14 +2,14 @@ import React from 'react';
 import { 
   StockHeatmapWidget, 
   CryptoHeatmapWidget, 
-  TickerTapeWidget, 
+  TickerTapeWidget,
+  AdvancedChartWidget,
   EconomicCalendarWidget,
   ForexScreenerWidget,
   MarketQuotesWidget,
-  TimelineWidget,
-  AdvancedChartWidget
-} from './components/tradingview';
-import ErrorBoundary from './components/common/ErrorBoundary';
+  TimelineWidget
+} from '../components/tradingview';
+import ErrorBoundary from "../components/common/ErrorBoundary";
 
 function MarketPulsePage() {
   return (
@@ -42,14 +42,25 @@ function MarketPulsePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-neutral-900 rounded-lg p-4">
-          <h2 className="text-lg font-semibold mb-3 text-white">Economic Calendar</h2>
+          <h2 className="text-lg font-semibold mb-3 text-white">Advanced Chart</h2>
           <div className="h-[400px]">
             <ErrorBoundary>
-              <EconomicCalendarWidget />
+              <AdvancedChartWidget />
             </ErrorBoundary>
           </div>
         </div>
 
+        <div className="bg-neutral-900 rounded-lg p-4">
+          <h2 className="text-lg font-semibold mb-3 text-white">Market Quotes</h2>
+          <div className="h-[400px]">
+            <ErrorBoundary>
+              <MarketQuotesWidget />
+            </ErrorBoundary>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-neutral-900 rounded-lg p-4">
           <h2 className="text-lg font-semibold mb-3 text-white">Forex Screener</h2>
           <div className="h-[400px]">
@@ -58,31 +69,22 @@ function MarketPulsePage() {
             </ErrorBoundary>
           </div>
         </div>
-      </div>
 
-      <div className="bg-neutral-900 rounded-lg p-4">
-        <h2 className="text-lg font-semibold mb-3 text-white">Market Quotes</h2>
-        <div className="h-[400px]">
-          <ErrorBoundary>
-            <MarketQuotesWidget />
-          </ErrorBoundary>
+        <div className="bg-neutral-900 rounded-lg p-4">
+          <h2 className="text-lg font-semibold mb-3 text-white">Economic Calendar</h2>
+          <div className="h-[400px]">
+            <ErrorBoundary>
+              <EconomicCalendarWidget />
+            </ErrorBoundary>
+          </div>
         </div>
       </div>
-
+      
       <div className="bg-neutral-900 rounded-lg p-4">
         <h2 className="text-lg font-semibold mb-3 text-white">Market Timeline</h2>
-        <div className="h-[500px]">
+        <div className="h-[400px]">
           <ErrorBoundary>
             <TimelineWidget />
-          </ErrorBoundary>
-        </div>
-      </div>
-
-      <div className="bg-neutral-900 rounded-lg p-4">
-        <h2 className="text-lg font-semibold mb-3 text-white">Advanced Chart</h2>
-        <div className="h-[600px]">
-          <ErrorBoundary>
-            <AdvancedChartWidget />
           </ErrorBoundary>
         </div>
       </div>
