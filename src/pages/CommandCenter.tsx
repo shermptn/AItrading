@@ -6,15 +6,15 @@ import {
   TimelineWidget,
   EconomicCalendarWidget
 } from '../components/tradingview';
-import ErrorBoundary from '../components/common/ErrorBoundary'; // Corrected: Removed curly braces
+// THIS IS THE CORRECTED LINE:
+import ErrorBoundary from '../components/common/ErrorBoundary';
 import Watchlist from '../components/CommandCenter/Watchlist';
 import AILaunchpad from '../components/CommandCenter/AILaunchpad';
 
-function CommandCenterPage() { // Renamed from CommandCenter to follow convention
+function CommandCenterPage() {
   const [selectedSymbol, setSelectedSymbol] = useState('NASDAQ:NDX');
 
   const handleSymbolSelect = (symbol: string) => {
-    // This function can be used to update other components if needed in the future
     setSelectedSymbol(symbol);
   };
 
@@ -26,7 +26,6 @@ function CommandCenterPage() { // Renamed from CommandCenter to follow conventio
         <div className="xl:col-span-3 space-y-4">
           <div className="h-[600px] bg-neutral-900 rounded-lg">
             <ErrorBoundary>
-              {/* Pass the selected symbol to the chart widget if it accepts it */}
               <AdvancedChartWidget symbol={selectedSymbol} />
             </ErrorBoundary>
           </div>
